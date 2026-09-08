@@ -36,7 +36,8 @@ describe('grantOrigin / revokeOrigin / isGranted', () => {
 
     const policy = await db.sitePolicy.get(ORIGIN);
     expect(policy).toBeDefined();
-    expect(policy!.capabilities).toEqual([]);
+    // [Phase 2 §11 task 2.15] widened from [] to the four perception verbs.
+    expect(policy!.capabilities).toEqual(['read_page', 'read_structure', 'read_element', 'wait_for_settle']);
     expect(policy!.defaultMode).toBe('supervised');
     expect(policy!.revokedAt).toBeUndefined();
   });
@@ -69,6 +70,28 @@ describe('grantOrigin / revokeOrigin / isGranted', () => {
 
   it('revoke is idempotent on an origin that was never granted', async () => {
     await expect(revokeOrigin('https://never-granted.example')).resolves.toBeUndefined();
+  });
+
+  // [Phase 2 §10.1] Found by tools/collect-real-fixtures.ts re-granting the
+  // same origin for multiple corpus entries served from one combined
+  // origin: registerContentScripts throws on a duplicate id, and the old
+  // code treated that throw as a real failure, rolling back an otherwise-
+  // fine permission. grantOrigin must be idempotent on an already-set-up
+  // origin — this is also a real product bug, not just a test-harness
+  // concern: a real user re-granting an already-granted site would have
+  // hit the exact same silent rollback.
+  it('grant is idempotent — re-granting an already-set-up origin succeeds without re-registering', async () => {
+    const first = await grantOrigin(ORIGIN);
+    expect(first).toBe(true);
+    (chrome.scripting.registerContentScripts as any).mockClear();
+
+    const second = await grantOrigin(ORIGIN);
+    expect(second).toBe(true);
+    expect(chrome.scripting.registerContentScripts).not.toHaveBeenCalled();
+    expect(await isGranted(ORIGIN)).toBe(true);
+
+    const registered = await chrome.scripting.getRegisteredContentScripts();
+    expect(registered.filter((s: any) => s.id === AGENT_SCRIPT_ID_PREFIX + ORIGIN)).toHaveLength(1);
   });
 });
 

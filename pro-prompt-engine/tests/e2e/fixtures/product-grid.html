@@ -1,0 +1,48 @@
+<!doctype html>
+<!--
+  Phase 2 §7.3, task 2.9 — 2 forms, 4 landmarks, and a 24-item product grid
+  whose cards share a structural shape (<article><img><h3><span>) but differ
+  in class names, proving the repeat detector is structural, not class-based.
+  Acceptance: yields exactly 7 regions (2 forms + 4 landmarks + 1 repeat),
+  the grid's region total is 24.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Product grid fixture</title></head>
+<body>
+  <header>Site header</header>
+  <nav aria-label="Main navigation">
+    <a href="/">Home</a><a href="/deals">Deals</a>
+  </nav>
+
+  <form id="search-form" aria-label="Search">
+    <input type="search" name="q" placeholder="Search products">
+    <button type="submit">Search</button>
+  </form>
+
+  <!-- Deliberately NOT wrapped in <main> — §7.3's priority order (form >
+       landmark > repeat > root) means a repeat block nested inside a
+       landmark reports as that landmark's completeness instead of its own
+       (perception.ts's deriveRegions() comment). This fixture exercises the
+       case task 2.9 actually specifies: a repeat region as its own bucket. -->
+  <div class="grid">
+    <!-- 24 structurally identical cards, differing class names on
+         purpose — the repeat detector matches on child-tag shape, not
+         class. Generated programmatically by regions.spec.ts for the
+         actual test; this static excerpt shows 3 for readability. -->
+    <article class="card card--a"><img src="1.jpg" alt="Product 1"><h3>Product 1</h3><span class="price">$10</span></article>
+    <article class="card card--b"><img src="2.jpg" alt="Product 2"><h3>Product 2</h3><span class="price">$12</span></article>
+    <article class="card card--c"><img src="3.jpg" alt="Product 3"><h3>Product 3</h3><span class="price">$14</span></article>
+  </div>
+
+  <aside aria-label="Related content">
+    <a href="/x">Related item</a>
+  </aside>
+
+  <form id="newsletter-form" aria-label="Newsletter signup">
+    <input type="email" name="email" placeholder="Email address">
+    <button type="submit">Subscribe</button>
+  </form>
+
+  <footer>Site footer</footer>
+</body>
+</html>

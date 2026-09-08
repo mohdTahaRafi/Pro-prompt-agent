@@ -1,0 +1,68 @@
+{
+  "runId": "corpus-14",
+  "tabId": 1,
+  "epoch": 1,
+  "url": "http://localhost:3000/",
+  "origin": "http://localhost:3000",
+  "title": "Minimal toolbar",
+  "settled": true,
+  "settleWaitedMs": 0,
+  "settleCalibration": "visible",
+  "epochSuspect": false,
+  "elements": [
+    {
+      "handle": "e0",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 0
+    },
+    {
+      "handle": "e1",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "svg",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 1
+    },
+    {
+      "handle": "e2",
+      "role": "button",
+      "name": "Confirm",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 2
+    }
+  ],
+  "excludedCount": 0,
+  "regions": [
+    {
+      "regionId": "region:root",
+      "label": "Page",
+      "complete": true,
+      "shown": 3,
+      "total": 3
+    }
+  ],
+  "unreachableRegions": [],
+  "buildMs": 1
+}

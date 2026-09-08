@@ -47,6 +47,13 @@ describe('ExtensionRequest — the discriminated union every inbound message par
     expect(ExtensionRequest.safeParse({ type: 'OPEN_DASHBOARD' }).success).toBe(true);
   });
 
+  // [Phase 2] GET_TAB_ID (agent.content.ts's own tab id) and
+  // GET_ACTIVE_GRANTS (the Perception debug tab's origin dropdown, §9).
+  it('accepts a well-formed GET_TAB_ID and GET_ACTIVE_GRANTS', () => {
+    expect(ExtensionRequest.safeParse({ type: 'GET_TAB_ID' }).success).toBe(true);
+    expect(ExtensionRequest.safeParse({ type: 'GET_ACTIVE_GRANTS' }).success).toBe(true);
+  });
+
   it('accepts a SET_PROFILE update (id + partial fields) and a SET_PROFILE create (full shape, no id)', () => {
     const update = ExtensionRequest.safeParse({ type: 'SET_PROFILE', payload: { id: 1, contextMd: 'hello' } });
     expect(update.success).toBe(true);

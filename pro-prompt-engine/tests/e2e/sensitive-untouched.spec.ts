@@ -4,12 +4,13 @@
  * value — asserted by a service-worker-side recorder.
  *
  * Grants the origin first (via the same code path grant-revoke.spec.ts
- * exercises) so the agent content script (entrypoints/agent.ts —
- * SnippetManager + PING only, DEFAULT_CAPABILITIES is []) is actually
- * present on the page. This is the harder, more meaningful case: even with
- * the content script running, no field value ever crosses the message
- * boundary — proven by wrapping chrome.runtime.onMessage in the service
- * worker and recording every payload it receives.
+ * exercises) so the agent content script (entrypoints/agent.content.ts —
+ * SnippetManager + perception, DEFAULT_CAPABILITIES is the four perception
+ * verbs as of Phase 2) is actually present on the page. This is the harder,
+ * more meaningful case: even with the content script running and perception
+ * active, no field value ever crosses the message boundary — proven by
+ * wrapping chrome.runtime.onMessage in the service worker and recording
+ * every payload it receives.
  */
 import { test, expect } from './fixture';
 

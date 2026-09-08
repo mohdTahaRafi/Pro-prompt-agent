@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-09-08T08:40:59.575Z",
+  "sourceUrl": "https://the-internet.herokuapp.com/tables",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "notes": "tabular data, sortable columns",
+  "ppSchemaVersion": 1
+}

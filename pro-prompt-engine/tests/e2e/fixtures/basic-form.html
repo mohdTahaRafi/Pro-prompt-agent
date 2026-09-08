@@ -1,15 +1,21 @@
 <!doctype html>
 <!--
-  Grant/revoke + snippet-expansion fixture (§8.2). window.__proPromptPing
-  bridges to entrypoints/agent.ts's isolated-world content script via
-  CustomEvents on `document` — see that file's header comment for why a
-  direct window property does not cross the isolated/main world boundary.
+  Grant/revoke + snippet-expansion + perception fixture (§8.2, Phase 2 §9).
+  window.__proPromptPing bridges to entrypoints/agent.content.ts's
+  isolated-world content script via CustomEvents on `document` — see that
+  file's header comment for why a direct window property does not cross the
+  isolated/main world boundary.
 -->
 <html lang="en">
 <head><meta charset="utf-8"><title>Basic Form</title></head>
 <body>
   <h1>Basic Form</h1>
-  <textarea id="comment-box" placeholder="Type a comment... try /dev"></textarea>
+  <form id="basic" aria-label="Basic form">
+    <label for="full-name">Full name</label>
+    <input id="full-name" name="full_name">
+    <textarea id="comment-box" placeholder="Type a comment... try /dev"></textarea>
+    <button type="submit">Submit</button>
+  </form>
 
   <script>
     window.__proPromptPing = function (timeoutMs) {

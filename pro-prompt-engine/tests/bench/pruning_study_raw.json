@@ -1,0 +1,276 @@
+{
+  "ambient": [
+    {
+      "id": "form-simple-6",
+      "targetHandle": "e20",
+      "survived": true,
+      "targetRegionId": "form:contact",
+      "regionComplete": true
+    },
+    {
+      "id": "product-grid-3",
+      "targetHandle": "e19",
+      "survived": true,
+      "targetRegionId": "repeat:24k12a",
+      "regionComplete": true
+    },
+    {
+      "id": "product-grid-6",
+      "targetHandle": "e28",
+      "survived": true,
+      "targetRegionId": "repeat:24k12a",
+      "regionComplete": true
+    },
+    {
+      "id": "two-forms-1",
+      "targetHandle": "e6",
+      "survived": true,
+      "targetRegionId": "form:notif-form-1",
+      "regionComplete": true
+    },
+    {
+      "id": "two-forms-2",
+      "targetHandle": "e6",
+      "survived": true,
+      "targetRegionId": "form:notif-form-2",
+      "regionComplete": true
+    },
+    {
+      "id": "duplicate-buttons-1",
+      "targetHandle": "e3",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "duplicate-buttons-2",
+      "targetHandle": "e3",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "file-upload-1",
+      "targetHandle": "e3",
+      "survived": true,
+      "targetRegionId": "form:0",
+      "regionComplete": true
+    },
+    {
+      "id": "long-list-4",
+      "targetHandle": "e60",
+      "survived": true,
+      "targetRegionId": "repeat:24k12a",
+      "regionComplete": true
+    },
+    {
+      "id": "nav-page-1",
+      "targetHandle": "e7",
+      "survived": true,
+      "targetRegionId": "landmark:navigation:0",
+      "regionComplete": true
+    },
+    {
+      "id": "prefilled-form-1",
+      "targetHandle": "e3",
+      "survived": true,
+      "targetRegionId": "form:0",
+      "regionComplete": true
+    },
+    {
+      "id": "unnamed-control-1",
+      "targetHandle": "e2",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "settings-with-toggle-40",
+      "targetHandle": "e3",
+      "survived": true,
+      "targetRegionId": "form:0",
+      "regionComplete": true
+    },
+    {
+      "id": "dol-whd-complaint",
+      "targetHandle": "e12",
+      "survived": true,
+      "targetRegionId": "form:search_form_large",
+      "regionComplete": false
+    },
+    {
+      "id": "govuk-home",
+      "targetHandle": "e21",
+      "survived": true,
+      "targetRegionId": "form:1",
+      "regionComplete": false
+    },
+    {
+      "id": "wikipedia-browser-article",
+      "targetHandle": "e49",
+      "survived": true,
+      "targetRegionId": "landmark:navigation:4",
+      "regionComplete": false
+    },
+    {
+      "id": "mdn-array-docs",
+      "targetHandle": "e28",
+      "survived": true,
+      "targetRegionId": "landmark:navigation:1",
+      "regionComplete": false
+    },
+    {
+      "id": "hn-front",
+      "targetHandle": "e19",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": false
+    },
+    {
+      "id": "herokuapp-checkboxes",
+      "targetHandle": "e2",
+      "survived": true,
+      "targetRegionId": "form:checkboxes",
+      "regionComplete": true
+    },
+    {
+      "id": "herokuapp-dropdown",
+      "targetHandle": "e1",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "herokuapp-upload",
+      "targetHandle": "e1",
+      "survived": true,
+      "targetRegionId": "form:0",
+      "regionComplete": true
+    },
+    {
+      "id": "herokuapp-tables",
+      "targetHandle": "e4",
+      "survived": true,
+      "targetRegionId": "repeat:7ks21z",
+      "regionComplete": true
+    },
+    {
+      "id": "github-repo",
+      "targetHandle": "e30",
+      "survived": true,
+      "targetRegionId": "landmark:navigation:1",
+      "regionComplete": false
+    },
+    {
+      "id": "python-docs-tutorial",
+      "targetHandle": "e16",
+      "survived": true,
+      "targetRegionId": "landmark:navigation:3",
+      "regionComplete": false
+    },
+    {
+      "id": "wikipedia-population-table",
+      "targetHandle": "e93",
+      "survived": true,
+      "targetRegionId": "landmark:region:0",
+      "regionComplete": false
+    },
+    {
+      "id": "httpbin-form",
+      "targetHandle": "e12",
+      "survived": true,
+      "targetRegionId": "form:0",
+      "regionComplete": true
+    },
+    {
+      "id": "mdn-css-flexbox",
+      "targetHandle": "e68",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": false
+    },
+    {
+      "id": "herokuapp-add-remove",
+      "targetHandle": "e1",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "herokuapp-inputs",
+      "targetHandle": "e1",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "herokuapp-dynamic-content",
+      "targetHandle": "e1",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "herokuapp-shadowdom",
+      "targetHandle": "e1",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "herokuapp-iframe-editor",
+      "targetHandle": "e20",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "herokuapp-jqueryui-menu",
+      "targetHandle": "e6",
+      "survived": true,
+      "targetRegionId": "region:root",
+      "regionComplete": true
+    },
+    {
+      "id": "github-issues-list",
+      "targetHandle": "e94",
+      "survived": true,
+      "targetRegionId": "landmark:main:0",
+      "regionComplete": false
+    },
+    {
+      "id": "herokuapp-forgot-password",
+      "targetHandle": "e3",
+      "survived": true,
+      "targetRegionId": "form:forgot_password",
+      "regionComplete": true
+    },
+    {
+      "id": "httpbin-home",
+      "targetHandle": "e106",
+      "survived": true,
+      "targetRegionId": "repeat:n8iv0z",
+      "regionComplete": true
+    }
+  ],
+  "stress": [
+    {
+      "id": "form-simple-6",
+      "targetRegionId": "form:contact",
+      "survivedAtTinyBudget": true,
+      "overBudgetRecorded": true
+    },
+    {
+      "id": "product-grid-6",
+      "targetRegionId": "repeat:24k12a",
+      "survivedAtTinyBudget": true,
+      "overBudgetRecorded": true
+    },
+    {
+      "id": "long-list-4",
+      "targetRegionId": "repeat:24k12a",
+      "survivedAtTinyBudget": true,
+      "overBudgetRecorded": true
+    }
+  ]
+}

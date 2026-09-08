@@ -18,7 +18,12 @@ export default defineConfig({
       provider: 'v8',
       // Only the files whose correctness is a safety property. A global
       // percentage across a UI-heavy repo measures nothing useful.
-      include: ['lib/policy/**', 'lib/page/sensitive.ts', 'lib/agent/**', 'lib/schemas/**'],
+      // [Phase 2] widened from lib/page/sensitive.ts alone to all of
+      // lib/page/**: the exclusion point (perception.ts's walk), the
+      // pruning rules that must never silently hide a target region, and
+      // the re-resolution ladder that must never guess are exactly the
+      // same category of safety property.
+      include: ['lib/policy/**', 'lib/page/**', 'lib/agent/**', 'lib/schemas/**'],
       thresholds: { lines: 90, functions: 90, branches: 85 },
     },
   },

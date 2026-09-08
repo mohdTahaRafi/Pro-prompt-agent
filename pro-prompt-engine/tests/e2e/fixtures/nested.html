@@ -1,0 +1,36 @@
+<!doctype html>
+<!--
+  Phase 2 §7.1, task 2.7 — an open shadow root, a closed shadow root, a
+  same-origin iframe (srcdoc — same origin by construction) and a
+  cross-origin iframe. tests/unit/perception.spec.ts builds the equivalent
+  structure programmatically for its assertions (script tags inserted via
+  innerHTML are inert under happy-dom, so this file's own <script> only
+  matters for a real browser / future Playwright run); this file is the
+  real-browser-loadable counterpart of that same structure.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Nested reachability fixture</title></head>
+<body>
+  <h1>Nested reachability fixture</h1>
+
+  <div id="open-host"></div>
+  <x-closed-widget></x-closed-widget>
+
+  <iframe id="same-origin-frame" title="Same-origin frame"
+    srcdoc="<button>Inside same-origin frame</button>"></iframe>
+
+  <iframe id="cross-origin-frame" title="Cross-origin frame"
+    src="https://other.example/embedded-payment.html"></iframe>
+
+  <script>
+    const openHost = document.getElementById('open-host');
+    const openShadow = openHost.attachShadow({ mode: 'open' });
+    const openButton = document.createElement('button');
+    openButton.textContent = 'Button inside open shadow root';
+    openShadow.appendChild(openButton);
+
+    document.querySelector('x-closed-widget').attachShadow({ mode: 'closed' })
+      .appendChild(Object.assign(document.createElement('button'), { textContent: 'Unreachable' }));
+  </script>
+</body>
+</html>

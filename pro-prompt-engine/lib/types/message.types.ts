@@ -21,7 +21,12 @@ export type MessageType =
   | 'GET_PROVIDER_STATUS' | 'SET_ACTIVE_PROVIDER' | 'CHECK_PII'
   | 'GET_PROMPT_HISTORY' | 'MODEL_STATE_CHANGED'
   | 'WEBGPU_GET_STATE' | 'OPEN_DASHBOARD'
-  | 'GRANT_ORIGIN' | 'REVOKE_ORIGIN';
+  | 'GRANT_ORIGIN' | 'REVOKE_ORIGIN'
+  // [Phase 2] agent.content.ts has no direct API for its own tab id; it asks
+  // the service worker once and caches the answer (entrypoints/agent.content.ts).
+  | 'GET_TAB_ID'
+  // [Phase 2] the Perception debug tab's granted-origin dropdown (§9).
+  | 'GET_ACTIVE_GRANTS';
 
 export interface ExtensionResponse<T = unknown> {
   status: 'success' | 'error' | 'not_implemented' | 'unknown_type';

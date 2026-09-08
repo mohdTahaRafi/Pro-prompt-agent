@@ -1,0 +1,82 @@
+{
+  "runId": "corpus-9",
+  "tabId": 1,
+  "epoch": 1,
+  "url": "http://localhost:3000/",
+  "origin": "http://localhost:3000",
+  "title": "Duplicate actions 2",
+  "settled": true,
+  "settleWaitedMs": 0,
+  "settleCalibration": "visible",
+  "epochSuspect": false,
+  "elements": [
+    {
+      "handle": "e0",
+      "role": "heading",
+      "name": "Row A",
+      "nameSource": "content",
+      "tag": "h2",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 0
+    },
+    {
+      "handle": "e1",
+      "role": "heading",
+      "name": "Row B",
+      "nameSource": "content",
+      "tag": "h2",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 1
+    },
+    {
+      "handle": "e2",
+      "role": "button",
+      "name": "Remove",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 2
+    },
+    {
+      "handle": "e3",
+      "role": "button",
+      "name": "Remove",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 3
+    }
+  ],
+  "excludedCount": 0,
+  "regions": [
+    {
+      "regionId": "region:root",
+      "label": "Page",
+      "complete": true,
+      "shown": 4,
+      "total": 4
+    }
+  ],
+  "unreachableRegions": [],
+  "buildMs": 1
+}

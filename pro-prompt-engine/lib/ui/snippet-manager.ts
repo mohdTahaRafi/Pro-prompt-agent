@@ -2,17 +2,24 @@
  * Snippet Manager
  * Detects "/prefix" triggers in text fields and shows a snippet insertion UI.
  *
- * [Phase 1 PRE-2 §5.2] The popover now mounts in a closed-mode shadow root
+ * [Phase 1 PRE-2 §5.2] The popover mounts in a closed-mode shadow root
  * instead of a bare document.body div. A bare div is reachable by any page
  * script — it can read, style or remove it, and the page's own CSS reset can
  * distort it. mode: 'closed' makes host.shadowRoot null to page script, so
  * the page cannot walk into the popover; all: initial on the host neutralises
- * inherited page styles. isValidTarget() now defers to the shared sensitive-
+ * inherited page styles. isValidTarget() defers to the shared sensitive-
  * field classifier (lib/page/sensitive.ts) instead of accepting every input.
+ *
+ * [Phase 2 §3.1, §13, task 2.13] The shadow host is no longer owned outright
+ * by this class — it now shares agent.content.ts's single overlay host
+ * (lib/page/overlay/mount.ts) with the rest of the extension's on-page UI,
+ * so settle.ts's own-mutation filter and any future overlay have exactly
+ * one host element to reason about.
  */
 
 import type { Snippet } from '@lib/types/snippet.types';
 import { classifySensitive } from '@lib/page/sensitive';
+import { ensureOverlayRoot } from '@lib/page/overlay/mount';
 
 const SNIPPET_POPOVER_CSS = `
   .pp-snippet-popup {
@@ -50,8 +57,6 @@ const SNIPPET_POPOVER_CSS = `
 
 export class SnippetManager {
   private activeElement: HTMLInputElement | HTMLTextAreaElement | HTMLElement | null = null;
-  private shadow: ShadowRoot | null = null;
-  private hostEl: HTMLDivElement | null = null;
   private popup: HTMLDivElement | null = null;
   private currentQuery: string = '';
   private snippets: Snippet[] = [];
@@ -138,21 +143,17 @@ export class SnippetManager {
     }
   }
 
-  /** Lazily creates the closed-shadow-root host. Never appended twice. */
+  /** The shared overlay shadow root (lib/page/overlay/mount.ts). Injects its
+   *  own <style> once — the shared root has no CSS of its own. */
   private ensureHost(): ShadowRoot {
-    if (this.shadow) return this.shadow;
-    const host = document.createElement('div');
-    // No id. An id is a handle for page script; a random attribute is not
-    // useful to it.
-    host.style.cssText = 'all: initial; position: absolute; top: 0; left: 0; z-index: 2147483647;';
-    // documentElement, not body: some sites replace body on route change.
-    document.documentElement.appendChild(host);
-    this.shadow = host.attachShadow({ mode: 'closed' });
-    const style = document.createElement('style');
-    style.textContent = SNIPPET_POPOVER_CSS;
-    this.shadow.appendChild(style);
-    this.hostEl = host;
-    return this.shadow;
+    const shadow = ensureOverlayRoot();
+    if (!shadow.querySelector('style[data-pp-snippet-style]')) {
+      const style = document.createElement('style');
+      style.setAttribute('data-pp-snippet-style', '');
+      style.textContent = SNIPPET_POPOVER_CSS;
+      shadow.appendChild(style);
+    }
+    return shadow;
   }
 
   private async showPopup(target: HTMLElement, query: string) {

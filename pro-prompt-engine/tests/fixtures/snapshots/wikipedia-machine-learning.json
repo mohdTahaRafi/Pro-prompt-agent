@@ -1,0 +1,2785 @@
+{
+  "runId": "corpus-wikipedia-machine-learning-1788857633068",
+  "tabId": 87376301,
+  "epoch": 1,
+  "url": "https://en.wikipedia.org/wiki/Machine_learning",
+  "origin": "https://en.wikipedia.org",
+  "title": "Machine learning - Wikipedia",
+  "settled": true,
+  "settleWaitedMs": 404,
+  "settleCalibration": "visible",
+  "epochSuspect": false,
+  "elements": [
+    {
+      "handle": "e0",
+      "role": "link",
+      "name": "",
+      "nameSource": "none",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Main_Page",
+      "sensitiveKind": null,
+      "regionId": "landmark:banner:0",
+      "ordinal": 0
+    },
+    {
+      "handle": "e1",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:banner:0",
+      "ordinal": 1
+    },
+    {
+      "handle": "e2",
+      "role": "img",
+      "name": "Wikipedia",
+      "nameSource": "native",
+      "tag": "img",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:banner:0",
+      "ordinal": 2
+    },
+    {
+      "handle": "e3",
+      "role": "img",
+      "name": "The Free Encyclopedia",
+      "nameSource": "native",
+      "tag": "img",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:banner:0",
+      "ordinal": 3
+    },
+    {
+      "handle": "e4",
+      "role": "searchbox",
+      "name": "Search Wikipedia",
+      "nameSource": "label",
+      "tag": "input",
+      "inputType": "search",
+      "valueShape": "empty",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "autocomplete": "off",
+      "formId": "form:searchform",
+      "regionId": "form:searchform",
+      "ordinal": 4
+    },
+    {
+      "handle": "e5",
+      "role": "button",
+      "name": "Search",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "formId": "form:searchform",
+      "regionId": "form:searchform",
+      "ordinal": 5
+    },
+    {
+      "handle": "e6",
+      "role": "link",
+      "name": "Donate",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://donate.wikimedia.org/?wmf_source=donate&wmf_medium=sidebar&wmf_campaign=en.wikipedia.org&uselang=en",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:1",
+      "ordinal": 6
+    },
+    {
+      "handle": "e7",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:1",
+      "ordinal": 7
+    },
+    {
+      "handle": "e8",
+      "role": "link",
+      "name": "Create account",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/w/index.php?title=Special:CreateAccount&returnto=Machine+learning",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:1",
+      "ordinal": 8
+    },
+    {
+      "handle": "e9",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:1",
+      "ordinal": 9
+    },
+    {
+      "handle": "e10",
+      "role": "link",
+      "name": "Log in",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/w/index.php?title=Special:UserLogin&returnto=Machine+learning",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:1",
+      "ordinal": 10
+    },
+    {
+      "handle": "e11",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:1",
+      "ordinal": 11
+    },
+    {
+      "handle": "e12",
+      "role": "link",
+      "name": "Wiki Loves Monuments: Photograph a monument, help Wikipedia and win! Learn more",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://commons.wikimedia.org/wiki/Commons:Wiki_Loves_Monuments_2026_in_India",
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 12
+    },
+    {
+      "handle": "e13",
+      "role": "figure",
+      "name": "",
+      "nameSource": "none",
+      "tag": "figure",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 13
+    },
+    {
+      "handle": "e14",
+      "role": "presentation",
+      "name": "",
+      "nameSource": "none",
+      "tag": "img",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 14
+    },
+    {
+      "handle": "e15",
+      "role": "paragraph",
+      "name": "",
+      "nameSource": "none",
+      "tag": "p",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 15
+    },
+    {
+      "handle": "e16",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 16
+    },
+    {
+      "handle": "e17",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 17
+    },
+    {
+      "handle": "e18",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 18
+    },
+    {
+      "handle": "e19",
+      "role": "generic",
+      "name": "Hide",
+      "nameSource": "title",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 19
+    },
+    {
+      "handle": "e20",
+      "role": "button",
+      "name": "Hide Contents",
+      "nameSource": "label",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 20
+    },
+    {
+      "handle": "e21",
+      "role": "link",
+      "name": "(Top)",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 21
+    },
+    {
+      "handle": "e22",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 22
+    },
+    {
+      "handle": "e23",
+      "role": "link",
+      "name": "History",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#History",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 23
+    },
+    {
+      "handle": "e24",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 24
+    },
+    {
+      "handle": "e25",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 25
+    },
+    {
+      "handle": "e26",
+      "role": "link",
+      "name": "Relationships to other fields",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Relationships_to_other_fields",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 26
+    },
+    {
+      "handle": "e27",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 27
+    },
+    {
+      "handle": "e28",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 28
+    },
+    {
+      "handle": "e29",
+      "role": "button",
+      "name": "Toggle Relationships to other fields subsection",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 29
+    },
+    {
+      "handle": "e30",
+      "role": "link",
+      "name": "Theory",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Theory",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 30
+    },
+    {
+      "handle": "e31",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 31
+    },
+    {
+      "handle": "e32",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 32
+    },
+    {
+      "handle": "e33",
+      "role": "link",
+      "name": "Approaches",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Approaches",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 33
+    },
+    {
+      "handle": "e34",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 34
+    },
+    {
+      "handle": "e35",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 35
+    },
+    {
+      "handle": "e36",
+      "role": "button",
+      "name": "Toggle Approaches subsection",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 36
+    },
+    {
+      "handle": "e37",
+      "role": "link",
+      "name": "Models",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Models",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 37
+    },
+    {
+      "handle": "e38",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 38
+    },
+    {
+      "handle": "e39",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 39
+    },
+    {
+      "handle": "e40",
+      "role": "button",
+      "name": "Toggle Models subsection",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 40
+    },
+    {
+      "handle": "e41",
+      "role": "link",
+      "name": "Applications",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Applications",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 41
+    },
+    {
+      "handle": "e42",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 42
+    },
+    {
+      "handle": "e43",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 43
+    },
+    {
+      "handle": "e44",
+      "role": "link",
+      "name": "Limitations",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Limitations",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 44
+    },
+    {
+      "handle": "e45",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 45
+    },
+    {
+      "handle": "e46",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 46
+    },
+    {
+      "handle": "e47",
+      "role": "button",
+      "name": "Toggle Limitations subsection",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 47
+    },
+    {
+      "handle": "e48",
+      "role": "link",
+      "name": "Model assessments",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Model_assessments",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 48
+    },
+    {
+      "handle": "e49",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 49
+    },
+    {
+      "handle": "e50",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 50
+    },
+    {
+      "handle": "e51",
+      "role": "link",
+      "name": "Ethics",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Ethics",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 51
+    },
+    {
+      "handle": "e52",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 52
+    },
+    {
+      "handle": "e53",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 53
+    },
+    {
+      "handle": "e54",
+      "role": "button",
+      "name": "Toggle Ethics subsection",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 54
+    },
+    {
+      "handle": "e55",
+      "role": "link",
+      "name": "Hardware",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Hardware",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 55
+    },
+    {
+      "handle": "e56",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 56
+    },
+    {
+      "handle": "e57",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 57
+    },
+    {
+      "handle": "e58",
+      "role": "button",
+      "name": "Toggle Hardware subsection",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 58
+    },
+    {
+      "handle": "e59",
+      "role": "link",
+      "name": "Software",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Software",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 59
+    },
+    {
+      "handle": "e60",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 60
+    },
+    {
+      "handle": "e61",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 61
+    },
+    {
+      "handle": "e62",
+      "role": "button",
+      "name": "Toggle Software subsection",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 62
+    },
+    {
+      "handle": "e63",
+      "role": "link",
+      "name": "Journals",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Journals",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 63
+    },
+    {
+      "handle": "e64",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 64
+    },
+    {
+      "handle": "e65",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 65
+    },
+    {
+      "handle": "e66",
+      "role": "link",
+      "name": "Conferences",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#Conferences",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 66
+    },
+    {
+      "handle": "e67",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 67
+    },
+    {
+      "handle": "e68",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 68
+    },
+    {
+      "handle": "e69",
+      "role": "link",
+      "name": "See also",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning#See_also",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 69
+    },
+    {
+      "handle": "e70",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "div",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 70
+    },
+    {
+      "handle": "e71",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:4",
+      "ordinal": 71
+    },
+    {
+      "handle": "e72",
+      "role": "link",
+      "name": "Article",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:6",
+      "ordinal": 72
+    },
+    {
+      "handle": "e73",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:6",
+      "ordinal": 73
+    },
+    {
+      "handle": "e74",
+      "role": "link",
+      "name": "Talk",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Talk:Machine_learning",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:6",
+      "ordinal": 74
+    },
+    {
+      "handle": "e75",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:6",
+      "ordinal": 75
+    },
+    {
+      "handle": "e76",
+      "role": "link",
+      "name": "Read",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:7",
+      "ordinal": 76
+    },
+    {
+      "handle": "e77",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:7",
+      "ordinal": 77
+    },
+    {
+      "handle": "e78",
+      "role": "link",
+      "name": "Edit",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/w/index.php?title=Machine_learning&action=edit",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:7",
+      "ordinal": 78
+    },
+    {
+      "handle": "e79",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:7",
+      "ordinal": 79
+    },
+    {
+      "handle": "e80",
+      "role": "link",
+      "name": "View history",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/w/index.php?title=Machine_learning&action=history",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:7",
+      "ordinal": 80
+    },
+    {
+      "handle": "e81",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:7",
+      "ordinal": 81
+    },
+    {
+      "handle": "e82",
+      "role": "button",
+      "name": "Hide Appearance",
+      "nameSource": "label",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:10",
+      "ordinal": 82
+    },
+    {
+      "handle": "e83",
+      "role": "link",
+      "name": "Machine Learning (journal)",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_Learning_(journal)",
+      "sensitiveKind": null,
+      "regionId": "landmark:main:0",
+      "ordinal": 83
+    },
+    {
+      "handle": "e84",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "i",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:main:0",
+      "ordinal": 84
+    },
+    {
+      "handle": "e85",
+      "role": "link",
+      "name": "Statistical learning in language acquisition",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Statistical_learning_in_language_acquisition",
+      "sensitiveKind": null,
+      "regionId": "landmark:main:0",
+      "ordinal": 85
+    },
+    {
+      "handle": "e86",
+      "role": "link",
+      "name": "a series",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Category:Machine_learning",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 86
+    },
+    {
+      "handle": "e87",
+      "role": "link",
+      "name": "Machine learning",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Machine_learning",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 87
+    },
+    {
+      "handle": "e88",
+      "role": "link",
+      "name": "data mining",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Data_mining",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 88
+    },
+    {
+      "handle": "e89",
+      "role": "button",
+      "name": "[ show ]",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 89
+    },
+    {
+      "handle": "e90",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 90
+    },
+    {
+      "handle": "e91",
+      "role": "button",
+      "name": "[ show ]",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 91
+    },
+    {
+      "handle": "e92",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 92
+    },
+    {
+      "handle": "e93",
+      "role": "button",
+      "name": "[ show ]",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 93
+    },
+    {
+      "handle": "e94",
+      "role": "generic",
+      "name": "",
+      "nameSource": "none",
+      "tag": "span",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 94
+    },
+    {
+      "handle": "e95",
+      "role": "link",
+      "name": "Supervised learning",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://en.wikipedia.org/wiki/Supervised_learning",
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 95
+    },
+    {
+      "handle": "e96",
+      "role": "button",
+      "name": "[ show ]",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "landmark:navigation:11",
+      "ordinal": 96
+    }
+  ],
+  "excludedCount": 2,
+  "regions": [
+    {
+      "regionId": "form:searchform",
+      "label": "Form 1",
+      "complete": false,
+      "shown": 2,
+      "total": 3
+    },
+    {
+      "regionId": "form:1",
+      "label": "Form 2",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "form:2",
+      "label": "Form 3",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "form:3",
+      "label": "Form 4",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "form:vector-sticky-search-form",
+      "label": "Form 5",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "landmark:banner:0",
+      "label": "Banner 1",
+      "complete": false,
+      "shown": 4,
+      "total": 5
+    },
+    {
+      "regionId": "landmark:navigation:0",
+      "label": "Site",
+      "complete": false,
+      "shown": 0,
+      "total": 28
+    },
+    {
+      "regionId": "landmark:search:0",
+      "label": "Search 1",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "landmark:navigation:1",
+      "label": "Personal tools",
+      "complete": false,
+      "shown": 6,
+      "total": 17
+    },
+    {
+      "regionId": "landmark:navigation:2",
+      "label": "Appearance",
+      "complete": false,
+      "shown": 0,
+      "total": 2
+    },
+    {
+      "regionId": "landmark:navigation:3",
+      "label": "Site",
+      "complete": false,
+      "shown": 0,
+      "total": 1
+    },
+    {
+      "regionId": "landmark:navigation:4",
+      "label": "Contents",
+      "complete": false,
+      "shown": 52,
+      "total": 261
+    },
+    {
+      "regionId": "landmark:main:0",
+      "label": "Main 1",
+      "complete": false,
+      "shown": 3,
+      "total": 249
+    },
+    {
+      "regionId": "landmark:navigation:5",
+      "label": "Contents",
+      "complete": false,
+      "shown": 0,
+      "total": 2
+    },
+    {
+      "regionId": "landmark:navigation:6",
+      "label": "Namespaces",
+      "complete": false,
+      "shown": 4,
+      "total": 6
+    },
+    {
+      "regionId": "landmark:navigation:7",
+      "label": "Views",
+      "complete": false,
+      "shown": 6,
+      "total": 7
+    },
+    {
+      "regionId": "landmark:navigation:8",
+      "label": "Page tools",
+      "complete": false,
+      "shown": 0,
+      "total": 45
+    },
+    {
+      "regionId": "landmark:navigation:9",
+      "label": "Page tools",
+      "complete": false,
+      "shown": 0,
+      "total": 1
+    },
+    {
+      "regionId": "landmark:navigation:10",
+      "label": "Appearance",
+      "complete": false,
+      "shown": 1,
+      "total": 3
+    },
+    {
+      "regionId": "landmark:navigation:11",
+      "label": "Navigation 12",
+      "complete": false,
+      "shown": 11,
+      "total": 193
+    },
+    {
+      "regionId": "landmark:navigation:12",
+      "label": "Navigation 13",
+      "complete": false,
+      "shown": 0,
+      "total": 94
+    },
+    {
+      "regionId": "landmark:region:0",
+      "label": "History",
+      "complete": false,
+      "shown": 0,
+      "total": 143
+    },
+    {
+      "regionId": "landmark:region:1",
+      "label": "Relationships to other fields",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "landmark:region:2",
+      "label": "Artificial intelligence",
+      "complete": false,
+      "shown": 0,
+      "total": 62
+    },
+    {
+      "regionId": "landmark:region:3",
+      "label": "Data compression",
+      "complete": false,
+      "shown": 0,
+      "total": 65
+    },
+    {
+      "regionId": "landmark:region:4",
+      "label": "Data mining",
+      "complete": false,
+      "shown": 0,
+      "total": 17
+    },
+    {
+      "regionId": "landmark:region:5",
+      "label": "Generalization",
+      "complete": false,
+      "shown": 0,
+      "total": 7
+    },
+    {
+      "regionId": "landmark:region:6",
+      "label": "Statistics",
+      "complete": false,
+      "shown": 0,
+      "total": 27
+    },
+    {
+      "regionId": "landmark:region:7",
+      "label": "Statistical physics",
+      "complete": false,
+      "shown": 0,
+      "total": 16
+    },
+    {
+      "regionId": "landmark:region:8",
+      "label": "Theory",
+      "complete": false,
+      "shown": 0,
+      "total": 30
+    },
+    {
+      "regionId": "landmark:region:9",
+      "label": "Approaches",
+      "complete": false,
+      "shown": 0,
+      "total": 30
+    },
+    {
+      "regionId": "landmark:region:10",
+      "label": "Supervised learning",
+      "complete": false,
+      "shown": 0,
+      "total": 41
+    },
+    {
+      "regionId": "landmark:region:11",
+      "label": "Unsupervised learning",
+      "complete": false,
+      "shown": 0,
+      "total": 25
+    },
+    {
+      "regionId": "landmark:region:12",
+      "label": "Dimensionality reduction",
+      "complete": false,
+      "shown": 0,
+      "total": 16
+    },
+    {
+      "regionId": "landmark:region:13",
+      "label": "Semi-supervised learning",
+      "complete": false,
+      "shown": 0,
+      "total": 12
+    },
+    {
+      "regionId": "landmark:region:14",
+      "label": "Reinforcement learning",
+      "complete": false,
+      "shown": 0,
+      "total": 24
+    },
+    {
+      "regionId": "landmark:region:15",
+      "label": "Other types",
+      "complete": false,
+      "shown": 0,
+      "total": 10
+    },
+    {
+      "regionId": "landmark:region:16",
+      "label": "Self-learning",
+      "complete": false,
+      "shown": 0,
+      "total": 20
+    },
+    {
+      "regionId": "landmark:region:17",
+      "label": "Feature learning",
+      "complete": false,
+      "shown": 0,
+      "total": 47
+    },
+    {
+      "regionId": "landmark:region:18",
+      "label": "Sparse dictionary learning",
+      "complete": false,
+      "shown": 0,
+      "total": 20
+    },
+    {
+      "regionId": "landmark:region:19",
+      "label": "Anomaly detection",
+      "complete": false,
+      "shown": 0,
+      "total": 24
+    },
+    {
+      "regionId": "landmark:region:20",
+      "label": "Robot learning",
+      "complete": false,
+      "shown": 0,
+      "total": 14
+    },
+    {
+      "regionId": "landmark:region:21",
+      "label": "Association rules",
+      "complete": false,
+      "shown": 0,
+      "total": 70
+    },
+    {
+      "regionId": "landmark:region:22",
+      "label": "Models",
+      "complete": false,
+      "shown": 0,
+      "total": 14
+    },
+    {
+      "regionId": "landmark:region:23",
+      "label": "Artificial neural networks",
+      "complete": false,
+      "shown": 0,
+      "total": 68
+    },
+    {
+      "regionId": "landmark:region:24",
+      "label": "Decision trees",
+      "complete": false,
+      "shown": 0,
+      "total": 14
+    },
+    {
+      "regionId": "landmark:region:25",
+      "label": "Random forest regression",
+      "complete": false,
+      "shown": 0,
+      "total": 14
+    },
+    {
+      "regionId": "landmark:region:26",
+      "label": "Support-vector machines",
+      "complete": false,
+      "shown": 0,
+      "total": 15
+    },
+    {
+      "regionId": "landmark:region:27",
+      "label": "Regression analysis",
+      "complete": false,
+      "shown": 0,
+      "total": 26
+    },
+    {
+      "regionId": "landmark:region:28",
+      "label": "Bayesian networks",
+      "complete": false,
+      "shown": 0,
+      "total": 16
+    },
+    {
+      "regionId": "landmark:region:29",
+      "label": "Gaussian processes",
+      "complete": false,
+      "shown": 0,
+      "total": 16
+    },
+    {
+      "regionId": "landmark:region:30",
+      "label": "Genetic algorithms",
+      "complete": false,
+      "shown": 0,
+      "total": 24
+    },
+    {
+      "regionId": "landmark:region:31",
+      "label": "Belief functions",
+      "complete": false,
+      "shown": 0,
+      "total": 24
+    },
+    {
+      "regionId": "landmark:region:32",
+      "label": "Rule-based models",
+      "complete": false,
+      "shown": 0,
+      "total": 20
+    },
+    {
+      "regionId": "landmark:region:33",
+      "label": "Training models",
+      "complete": false,
+      "shown": 0,
+      "total": 9
+    },
+    {
+      "regionId": "landmark:region:34",
+      "label": "Federated learning",
+      "complete": false,
+      "shown": 0,
+      "total": 12
+    },
+    {
+      "regionId": "landmark:region:35",
+      "label": "Applications",
+      "complete": false,
+      "shown": 0,
+      "total": 152
+    },
+    {
+      "regionId": "landmark:region:36",
+      "label": "Limitations",
+      "complete": false,
+      "shown": 0,
+      "total": 52
+    },
+    {
+      "regionId": "landmark:region:37",
+      "label": "Explainability",
+      "complete": false,
+      "shown": 0,
+      "total": 13
+    },
+    {
+      "regionId": "landmark:region:38",
+      "label": "Overfitting",
+      "complete": false,
+      "shown": 0,
+      "total": 12
+    },
+    {
+      "regionId": "landmark:region:39",
+      "label": "Model collapse",
+      "complete": false,
+      "shown": 0,
+      "total": 54
+    },
+    {
+      "regionId": "landmark:region:40",
+      "label": "Hallucinations",
+      "complete": false,
+      "shown": 0,
+      "total": 77
+    },
+    {
+      "regionId": "landmark:region:41",
+      "label": "Other limitations and vulnerabilities",
+      "complete": false,
+      "shown": 0,
+      "total": 40
+    },
+    {
+      "regionId": "landmark:region:42",
+      "label": "Model assessments",
+      "complete": false,
+      "shown": 0,
+      "total": 19
+    },
+    {
+      "regionId": "landmark:region:43",
+      "label": "Ethics",
+      "complete": false,
+      "shown": 0,
+      "total": 36
+    },
+    {
+      "regionId": "landmark:region:44",
+      "label": "Bias",
+      "complete": false,
+      "shown": 0,
+      "total": 81
+    },
+    {
+      "regionId": "landmark:region:45",
+      "label": "Financial incentives",
+      "complete": false,
+      "shown": 0,
+      "total": 8
+    },
+    {
+      "regionId": "landmark:region:46",
+      "label": "Hardware",
+      "complete": false,
+      "shown": 0,
+      "total": 26
+    },
+    {
+      "regionId": "landmark:region:47",
+      "label": "Tensor Processing Units (TPUs)",
+      "complete": false,
+      "shown": 0,
+      "total": 13
+    },
+    {
+      "regionId": "landmark:region:48",
+      "label": "Neuromorphic computing",
+      "complete": false,
+      "shown": 0,
+      "total": 9
+    },
+    {
+      "regionId": "landmark:region:49",
+      "label": "Physical neural networks",
+      "complete": false,
+      "shown": 0,
+      "total": 14
+    },
+    {
+      "regionId": "landmark:region:50",
+      "label": "Embedded machine learning",
+      "complete": false,
+      "shown": 0,
+      "total": 49
+    },
+    {
+      "regionId": "landmark:region:51",
+      "label": "Software",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "landmark:region:52",
+      "label": "Free and open-source software",
+      "complete": false,
+      "shown": 0,
+      "total": 50
+    },
+    {
+      "regionId": "landmark:region:53",
+      "label": "Proprietary software with free and open-source editions",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "landmark:region:54",
+      "label": "Proprietary software",
+      "complete": false,
+      "shown": 0,
+      "total": 25
+    },
+    {
+      "regionId": "landmark:region:55",
+      "label": "Journals",
+      "complete": false,
+      "shown": 0,
+      "total": 9
+    },
+    {
+      "regionId": "landmark:region:56",
+      "label": "Conferences",
+      "complete": false,
+      "shown": 0,
+      "total": 21
+    },
+    {
+      "regionId": "landmark:region:57",
+      "label": "See also",
+      "complete": false,
+      "shown": 0,
+      "total": 22
+    },
+    {
+      "regionId": "landmark:region:58",
+      "label": "References",
+      "complete": false,
+      "shown": 0,
+      "total": 1281
+    },
+    {
+      "regionId": "landmark:region:59",
+      "label": "Sources",
+      "complete": false,
+      "shown": 0,
+      "total": 29
+    },
+    {
+      "regionId": "landmark:region:60",
+      "label": "Further reading",
+      "complete": false,
+      "shown": 0,
+      "total": 57
+    },
+    {
+      "regionId": "landmark:region:61",
+      "label": "External links",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "landmark:navigation:13",
+      "label": "Artificial intelligence (AI)",
+      "complete": false,
+      "shown": 0,
+      "total": 285
+    },
+    {
+      "regionId": "landmark:navigation:14",
+      "label": "Computer science",
+      "complete": false,
+      "shown": 0,
+      "total": 208
+    },
+    {
+      "regionId": "landmark:navigation:15",
+      "label": "Portals",
+      "complete": false,
+      "shown": 0,
+      "total": 12
+    },
+    {
+      "regionId": "landmark:navigation:16",
+      "label": "sister-projects",
+      "complete": false,
+      "shown": 0,
+      "total": 23
+    },
+    {
+      "regionId": "landmark:navigation:17",
+      "label": "Authority control databases",
+      "complete": false,
+      "shown": 0,
+      "total": 21
+    },
+    {
+      "regionId": "landmark:contentinfo:0",
+      "label": "Contentinfo 1",
+      "complete": false,
+      "shown": 0,
+      "total": 25
+    },
+    {
+      "regionId": "landmark:search:1",
+      "label": "Search 2",
+      "complete": false,
+      "shown": 0,
+      "total": 1
+    },
+    {
+      "regionId": "landmark:navigation:18",
+      "label": "Contents",
+      "complete": false,
+      "shown": 0,
+      "total": 2
+    },
+    {
+      "regionId": "repeat:p6u0uk",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:kwpypf",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:sd60jc",
+      "label": "a list of 4 similar items",
+      "complete": true,
+      "shown": 4,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:u52xmq",
+      "label": "a list of 3 similar items",
+      "complete": true,
+      "shown": 3,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:fsxutd",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:9rcp0f",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:3mieub",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:n2a18u",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:p7427w",
+      "label": "a list of 11 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 11
+    },
+    {
+      "regionId": "repeat:bt8yd6",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:wry4fk",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:9fjghd",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:gszcsk",
+      "label": "a list of 93 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 93
+    },
+    {
+      "regionId": "repeat:2l8lem",
+      "label": "a list of 3 similar items",
+      "complete": true,
+      "shown": 3,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:w9wkts",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:7ccien",
+      "label": "a list of 10 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 10
+    },
+    {
+      "regionId": "repeat:sicfjh",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:2po0lz",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:98gnyx",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:9e0vux",
+      "label": "a list of 16 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 16
+    },
+    {
+      "regionId": "repeat:56czvs",
+      "label": "a list of 18 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 18
+    },
+    {
+      "regionId": "repeat:g7kx9x",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:1c9od2",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:fvyfzx",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:8l8wfv",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:6jcn34",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:knp6yf",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:gg1aza",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:c8df05",
+      "label": "a list of 9 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 9
+    },
+    {
+      "regionId": "repeat:80pj10",
+      "label": "a list of 12 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 12
+    },
+    {
+      "regionId": "repeat:los8sh",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:28s4nr",
+      "label": "a list of 11 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 11
+    },
+    {
+      "regionId": "repeat:ao3wm1",
+      "label": "a list of 10 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 10
+    },
+    {
+      "regionId": "repeat:evrsl6",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:jvefcw",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:y1k71g",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:y1k6y0",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:hdwg70",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:9zmnod",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:we4y2c",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:ux1p72",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:pfo2j6",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:x9x2ge",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:m5ce09",
+      "label": "a list of 9 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 9
+    },
+    {
+      "regionId": "repeat:h63qfi",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:2hpg7h",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:c6ou0k",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:vootvk",
+      "label": "a list of 12 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 12
+    },
+    {
+      "regionId": "repeat:voottu",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:h0ajoe",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:h0ajmo",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:wzg6w0",
+      "label": "a list of 10 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 10
+    },
+    {
+      "regionId": "repeat:yjtvof",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:yjtvnk",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:n5fz0z",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:n5fyz9",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:15ej7b",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:r7xk5i",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:r7xk6d",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:r7xk78",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:r7xk83",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:2trbae",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:pz8xd3",
+      "label": "a list of 9 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 9
+    },
+    {
+      "regionId": "repeat:u3yb0q",
+      "label": "a list of 21 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 21
+    },
+    {
+      "regionId": "repeat:3am8qp",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:w48psw",
+      "label": "a list of 9 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 9
+    },
+    {
+      "regionId": "repeat:79mdli",
+      "label": "a list of 214 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 214
+    },
+    {
+      "regionId": "repeat:nh3yyr",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:bd21z7",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:rdyz0r",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:u99z3n",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:among3",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:tiwo43",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:kwwewo",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:8154vx",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:mq9xkv",
+      "label": "a list of 10 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 10
+    },
+    {
+      "regionId": "repeat:jh7nc2",
+      "label": "a list of 7 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 7
+    },
+    {
+      "regionId": "repeat:9cetq5",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:evrykg",
+      "label": "a list of 8 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 8
+    },
+    {
+      "regionId": "repeat:bdxz5r",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:7w3zr2",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:acfj7o",
+      "label": "a list of 49 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 49
+    },
+    {
+      "regionId": "repeat:q50kg5",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:i4q2v8",
+      "label": "a list of 8 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 8
+    },
+    {
+      "regionId": "repeat:lmk29x",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:p4e1om",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:sm813b",
+      "label": "a list of 10 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 10
+    },
+    {
+      "regionId": "repeat:w420i0",
+      "label": "a list of 10 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 10
+    },
+    {
+      "regionId": "repeat:vxe2nq",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:ird4kx",
+      "label": "a list of 14 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 14
+    },
+    {
+      "regionId": "repeat:m973zm",
+      "label": "a list of 9 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 9
+    },
+    {
+      "regionId": "repeat:t8v2t0",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:69bxc1",
+      "label": "a list of 9 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 9
+    },
+    {
+      "regionId": "repeat:2rhxxc",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:ysl0cq",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:var0y1",
+      "label": "a list of 20 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 20
+    },
+    {
+      "regionId": "repeat:rsx1jc",
+      "label": "a list of 3 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 3
+    },
+    {
+      "regionId": "repeat:fn8x9h",
+      "label": "a list of 4 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 4
+    },
+    {
+      "regionId": "repeat:d6djsq",
+      "label": "a list of 6 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 6
+    },
+    {
+      "regionId": "repeat:quaxkp",
+      "label": "a list of 7 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 7
+    },
+    {
+      "regionId": "repeat:1vvt6u",
+      "label": "a list of 5 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 5
+    },
+    {
+      "regionId": "repeat:qxqnvd",
+      "label": "a list of 18 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 18
+    },
+    {
+      "regionId": "repeat:la2p42",
+      "label": "a list of 11 similar items",
+      "complete": false,
+      "shown": 0,
+      "total": 11
+    },
+    {
+      "regionId": "repeat:c791g7",
+      "label": "a list of 7 similar items",
+      "complete": true,
+      "shown": 7,
+      "total": 7
+    },
+    {
+      "regionId": "region:root",
+      "label": "Page",
+      "complete": false,
+      "shown": 8,
+      "total": 12
+    }
+  ],
+  "unreachableRegions": [],
+  "buildMs": 3503
+}

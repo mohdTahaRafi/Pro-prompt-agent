@@ -156,6 +156,16 @@ export const ModelStateChangedRequest = req('MODEL_STATE_CHANGED', z.object({
 export const GrantOriginRequest = req('GRANT_ORIGIN', z.object({ origin: OriginSchema }));
 export const RevokeOriginRequest = req('REVOKE_ORIGIN', z.object({ origin: OriginSchema }));
 
+// [Phase 2] entrypoints/agent.content.ts asks the service worker for its own
+// tab id once (a content script has no direct API for this) and caches the
+// answer. The background handler reads it off chrome.runtime.onMessage's
+// `sender.tab.id`.
+export const GetTabIdRequest = reqNoPayload('GET_TAB_ID');
+
+// [Phase 2] the Perception debug tab's granted-origin dropdown (§9) — lists
+// every sitePolicy row Chrome still actually holds the permission for.
+export const GetActiveGrantsRequest = reqNoPayload('GET_ACTIVE_GRANTS');
+
 export const ExtensionRequest = z.discriminatedUnion('type', [
   PingRequest, InferenceRequest, ScoreRequest, RefactorRequest, GenerateRequest,
   GetProfileRequest, SetProfileRequest, GetAllProfilesRequest, SetActiveProfileRequest, DeleteProfileRequest,
@@ -164,7 +174,7 @@ export const ExtensionRequest = z.discriminatedUnion('type', [
   LoadModelRequest, UnloadModelRequest, WebgpuGetStateRequest,
   CheckPiiRequest, GetProviderStatusRequest, SetActiveProviderRequest,
   GetPromptHistoryRequest, OpenDashboardRequest, ModelStateChangedRequest,
-  GrantOriginRequest, RevokeOriginRequest,
+  GrantOriginRequest, RevokeOriginRequest, GetTabIdRequest, GetActiveGrantsRequest,
 ]);
 
 export type ExtensionRequestType = z.infer<typeof ExtensionRequest>;

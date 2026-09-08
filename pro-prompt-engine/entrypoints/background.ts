@@ -27,6 +27,7 @@ import { generatePrompt } from '@lib/agents/generator';
 import { runRefactorLoop } from '@lib/agents/loop-controller';
 import { comprehendContext } from '@lib/agents/comprehension';
 import { grantOrigin, revokeOrigin, reconcileGrants } from '@lib/policy/scope';
+import { getActiveSitePolicies } from '@lib/db/policy-store';
 import { ExtensionRequest } from '@lib/schemas/message.schema';
 import type { LLMRequest } from '@lib/types/llm.types';
 import type { ExtensionMessage, ExtensionResponse } from '@lib/types/message.types';
@@ -76,11 +77,22 @@ export default defineBackground(() => {
 
   async function handleMessage(
     message: ExtensionMessage,
-    _sender: chrome.runtime.MessageSender,
+    sender: chrome.runtime.MessageSender,
   ): Promise<ExtensionResponse> {
     switch (message.type) {
       case 'PING':
         return { status: 'success', data: { timestamp: Date.now() } };
+
+      // [Phase 2] agent.content.ts's own tab id — see message.schema.ts's
+      // GetTabIdRequest comment. -1 when the sender isn't a tab (shouldn't
+      // happen for a per-origin content script, but never thrown on).
+      case 'GET_TAB_ID':
+        return { status: 'success', data: { tabId: sender.tab?.id ?? -1 } };
+
+      case 'GET_ACTIVE_GRANTS': {
+        const policies = await getActiveSitePolicies();
+        return { status: 'success', data: policies.map((p) => p.origin) };
+      }
 
       // ── Per-Origin Runtime Grants (PRE-4, PR-SEC-5…9) ──
       case 'GRANT_ORIGIN': {

@@ -1,18 +1,22 @@
 /**
  * Per-origin runtime grants — the scope module. Runs in the service worker.
  *
- * DEFAULT_CAPABILITIES is the empty set of acting verbs (Phase 2 adds
- * perception verbs, Phase 3 adds interaction verbs). A Phase 1 grant
- * registers a content script that does exactly two things: serve snippet
- * expansion and answer a ping. There is no perception, no actuation, no run.
- * See Docs/planning/phase_1_foundation_preconditions.md §4.
+ * [Phase 2 §11 task 2.15] DEFAULT_CAPABILITIES is widened from the Phase 1
+ * empty set to the four perception verbs: a fresh grant now registers
+ * agent.content.ts (Phase 2 §3.1), which answers read_structure,
+ * read_element, wait_for_settle and read_page. There is still no actuation,
+ * no gate, no run — Phase 3 adds the interaction verbs.
+ * See Docs/planning/phase_1_foundation_preconditions.md §4,
+ * Docs/planning/phase_2_perception.md §3.1, §11.
  */
 import { db } from '@lib/db/dexie-db';
 import type { Verb } from '@lib/schemas/action.schema';
 
 export const AGENT_SCRIPT_ID_PREFIX = 'pp-agent-';
 
-export const DEFAULT_CAPABILITIES: Verb[] = [];   // widened in Phase 2 and Phase 3
+export const DEFAULT_CAPABILITIES: Verb[] = [
+  'read_page', 'read_structure', 'read_element', 'wait_for_settle',
+];   // Phase 3 widens this further with the interaction verbs
 
 /** Normalise any URL to the origin form used as the sitePolicy primary key. */
 export function toOrigin(url: string): string | null {
@@ -30,37 +34,56 @@ function toMatchPattern(origin: string): string { return `${origin}/*`; }
  * Grant. MUST be called from a user-gesture handler — chrome.permissions.request
  * throws otherwise. Returns false if the user declined; never throws on decline.
  *
- * Failure mode: if registerContentScripts fails after the permission was
- * granted (duplicate id, quota, or a race with reconciliation), the grant is
- * rolled back — chrome.permissions.remove is called and grantOrigin returns
+ * Idempotent: granting an origin that is already fully set up (permission
+ * held AND its content script already registered) is a no-op success, not
+ * a failure. This matters for a real user re-granting a site they already
+ * granted (a stale popup re-offering "grant" for an already-active origin)
+ * and not just for automation — found by tools/collect-real-fixtures.ts
+ * (§10.1) re-granting the same localhost origin for multiple frozen
+ * captures served from one combined origin, which surfaced the bug:
+ * chrome.scripting.registerContentScripts throws on a duplicate id, and
+ * the old code treated ANY throw there as a real failure, rolling back a
+ * permission that was actually fine. Only a genuinely missing registration
+ * (permission held, no script) re-registers; only a real registration
+ * error (quota, a different fault) rolls back.
+ *
+ * Failure mode: if registration fails for a reason other than "already
+ * registered" (quota, a race with reconciliation), the grant is rolled
+ * back — chrome.permissions.remove is called and grantOrigin returns
  * false. A held permission with no registered script is worse than no
  * permission, because the popup would show the site as granted while
  * nothing works.
  */
 export async function grantOrigin(origin: string): Promise<boolean> {
   const origins = [toMatchPattern(origin)];
+  const scriptId = AGENT_SCRIPT_ID_PREFIX + origin;
   const granted = await chrome.permissions.request({ origins });
   if (!granted) return false;
 
-  try {
-    await chrome.scripting.registerContentScripts([{
-      id: AGENT_SCRIPT_ID_PREFIX + origin,
-      matches: origins,
-      // entrypoints/agent.ts is an "unlisted script" (defineUnlistedScript),
-      // not a defineContentScript entrypoint — WXT bundles those to the
-      // output root, not content-scripts/, and (critically) never adds any
-      // static content_scripts/host_permissions entry for it, which is why
-      // it is not a defineContentScript in the first place (see that file's
-      // header comment).
-      js: ['agent.js'],
-      runAt: 'document_idle',
-      world: 'ISOLATED',                      // explicit: never MAIN (§3.9)
-      persistAcrossSessions: true,
-    }]);
-  } catch (err) {
-    console.error('[scope] registerContentScripts failed — rolling back grant', err);
-    await chrome.permissions.remove({ origins }).catch(() => {});
-    return false;
+  // Filtered by id where the real API supports it; membership is also
+  // checked explicitly below rather than trusting an empty result, since
+  // not every environment honours the filter (e.g. the test double).
+  const already = await chrome.scripting.getRegisteredContentScripts({ ids: [scriptId] });
+  if (!already.some((s) => s.id === scriptId)) {
+    try {
+      await chrome.scripting.registerContentScripts([{
+        id: scriptId,
+        matches: origins,
+        // entrypoints/agent.content.ts uses defineContentScript with
+        // registration: 'runtime' (Phase 2 §3.1) — WXT bundles it to
+        // content-scripts/agent.js without adding any static content_scripts
+        // or host_permissions manifest entry, because runtime registration
+        // supplies its own `matches` (this origin only) at call time instead.
+        js: ['content-scripts/agent.js'],
+        runAt: 'document_idle',
+        world: 'ISOLATED',                      // explicit: never MAIN (§3.9)
+        persistAcrossSessions: true,
+      }]);
+    } catch (err) {
+      console.error('[scope] registerContentScripts failed — rolling back grant', err);
+      await chrome.permissions.remove({ origins }).catch(() => {});
+      return false;
+    }
   }
 
   await db.sitePolicy.put({

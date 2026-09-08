@@ -16,6 +16,8 @@
     "test:watch": "vitest",
     "build:e2e": "PP_E2E=1 wxt build",
     "test:e2e": "npm run build:e2e && playwright test",
+    "build:corpus": "PP_CORPUS=1 wxt build",
+    "collect:corpus": "npm run build:corpus && npx tsx tools/collect-real-fixtures.ts",
     "ci": "npm run compile && npm run test:unit && npm run build && npm run test:e2e",
     "postinstall": "wxt prepare"
   },

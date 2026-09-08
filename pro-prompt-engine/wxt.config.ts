@@ -1,4 +1,5 @@
 import { defineConfig } from 'wxt';
+import { FROZEN_CAPTURE_TARGETS, LIVE_PANEL_TARGETS } from './tools/corpus-targets';
 
 // [Phase 1 §8.2] chrome.permissions.request() opens a native browser bubble
 // that is not page content — Playwright cannot drive it (verified empirically:
@@ -14,8 +15,26 @@ import { defineConfig } from 'wxt';
 // sets PP_E2E, so its manifest stays exactly the Phase 1 baseline.
 const isE2E = process.env.PP_E2E === '1';
 
+// [Phase 2 §10.1] Same sidestep, applied to the corpus's 15 frozen-capture +
+// 10 live-panel real-page collection (`npm run build:corpus`, PP_CORPUS=1,
+// tools/collect-real-fixtures.ts). Every real target origin
+// (tools/corpus-targets.ts) is added as a genuinely-held host permission so
+// chrome.permissions.request() resolves instantly for it instead of hanging
+// on the native bubble — the exact PP_E2E mechanism above, generalised from
+// one fixed localhost origin to the corpus's real target list. Builds to its
+// own output dir; never touches the production or e2e manifests.
+const isCorpusCollect = process.env.PP_CORPUS === '1';
+const corpusOrigins = isCorpusCollect
+  ? [
+      'http://localhost:5600/*',   // the combined frozen-capture static server
+      ...LIVE_PANEL_TARGETS.map((t) => `${new URL(t.url).origin}/*`),
+      ...FROZEN_CAPTURE_TARGETS.map((t) => `${new URL(t.url).origin}/*`),
+    ]
+  : [];
+
 export default defineConfig({
   ...(isE2E ? { outDir: '.output/e2e' } : {}),   // → .output/e2e/chrome-mv3
+  ...(isCorpusCollect ? { outDir: '.output/corpus-collect' } : {}),
   modules: ['@wxt-dev/module-react'],
   manifest: {
     name: 'Pro Prompt',
@@ -36,6 +55,7 @@ export default defineConfig({
     host_permissions: [
       'http://localhost:11434/*',   // Ollama, local, required for a Local-only planner
       ...(isE2E ? ['http://localhost:5599/*'] : []),   // e2e fixture server only — see comment above
+      ...corpusOrigins,   // PP_CORPUS build only — see comment above
     ],
     // Groq and other remote providers move to optional_host_permissions,
     // requested at the point the user enters a key (Phase 4).

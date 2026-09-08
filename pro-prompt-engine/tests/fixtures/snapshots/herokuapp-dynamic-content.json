@@ -1,0 +1,106 @@
+{
+  "runId": "corpus-herokuapp-dynamic-content-1788857650752",
+  "tabId": 87376309,
+  "epoch": 1,
+  "url": "https://the-internet.herokuapp.com/dynamic_content",
+  "origin": "https://the-internet.herokuapp.com",
+  "title": "The Internet",
+  "settled": true,
+  "settleWaitedMs": 403,
+  "settleCalibration": "visible",
+  "epochSuspect": false,
+  "elements": [
+    {
+      "handle": "e0",
+      "role": "img",
+      "name": "Fork me on GitHub",
+      "nameSource": "native",
+      "tag": "img",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 0
+    },
+    {
+      "handle": "e1",
+      "role": "link",
+      "name": "click here",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "https://the-internet.herokuapp.com/dynamic_content?with_content=static",
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 1
+    },
+    {
+      "handle": "e2",
+      "role": "link",
+      "name": "Elemental Selenium",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "http://elementalselenium.com/",
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 2
+    },
+    {
+      "handle": "e3",
+      "role": "heading",
+      "name": "Dynamic Content",
+      "nameSource": "content",
+      "tag": "h3",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 3
+    },
+    {
+      "handle": "e4",
+      "role": "link",
+      "name": "",
+      "nameSource": "none",
+      "tag": "a",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "href": "https://github.com/tourdedave/the-internet",
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 4
+    }
+  ],
+  "excludedCount": 0,
+  "regions": [
+    {
+      "regionId": "repeat:acpx6n",
+      "label": "a list of 3 similar items",
+      "complete": true,
+      "shown": 3,
+      "total": 3
+    },
+    {
+      "regionId": "region:root",
+      "label": "Page",
+      "complete": true,
+      "shown": 5,
+      "total": 5
+    }
+  ],
+  "unreachableRegions": [],
+  "buildMs": 417
+}

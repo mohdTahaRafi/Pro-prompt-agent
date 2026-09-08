@@ -1,0 +1,91 @@
+{
+  "runId": "corpus-15",
+  "tabId": 1,
+  "epoch": 1,
+  "url": "http://localhost:3000/",
+  "origin": "http://localhost:3000",
+  "title": "Login 3",
+  "settled": true,
+  "settleWaitedMs": 0,
+  "settleCalibration": "visible",
+  "epochSuspect": false,
+  "elements": [
+    {
+      "handle": "e0",
+      "role": "heading",
+      "name": "Sign in",
+      "nameSource": "content",
+      "tag": "h1",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 0
+    },
+    {
+      "handle": "e1",
+      "role": "form",
+      "name": "Sign in",
+      "nameSource": "label",
+      "tag": "form",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 1
+    },
+    {
+      "handle": "e2",
+      "role": "textbox",
+      "name": "Username",
+      "nameSource": "native",
+      "tag": "input",
+      "inputType": "text",
+      "valueShape": "empty",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 2
+    },
+    {
+      "handle": "e3",
+      "role": "button",
+      "name": "Sign in",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 3
+    }
+  ],
+  "excludedCount": 2,
+  "regions": [
+    {
+      "regionId": "form:0",
+      "label": "Sign in",
+      "complete": true,
+      "shown": 3,
+      "total": 3
+    },
+    {
+      "regionId": "region:root",
+      "label": "Page",
+      "complete": true,
+      "shown": 1,
+      "total": 1
+    }
+  ],
+  "unreachableRegions": [],
+  "buildMs": 6
+}
