@@ -1,6 +1,17 @@
 /**
- * Autocomplete Manager (Ghost Text)
- * Debounces user typing and injects a non-selectable ghost text overlay.
+ * Autocomplete Manager (Ghost Text) — [Phase 1] REMOVED FROM THE BUILD.
+ *
+ * Nothing imports this file. It violates three of the four §3.7.22
+ * conditions simultaneously: it ran on every site, its isValidTarget()
+ * returned true for type="password", and its debounced handler posted the
+ * entire field value to the AUTOCOMPLETE message, which the router could
+ * cascade to Groq when local engines were cold — a password typed into any
+ * field on any site could leave the machine. Left on disk, unimported,
+ * because the ghost-text positioning math (showGhostText) is the one part
+ * of it that was correct and Phase 4 rebuilds on it once the sensitive-field
+ * classifier (lib/page/sensitive.ts), the tier router and the grant model
+ * all exist. See Docs/planning/phase_1_foundation_preconditions.md §5.1 and
+ * architecture.md §3.7.22.
  */
 
 import { debounce } from '@lib/utils/debounce';
@@ -29,15 +40,15 @@ export class AutocompleteManager {
 
   constructor() {
     this.initListeners();
-    chrome.storage.local.get('autocompleteEnabled', (res) => {
+    chrome.storage.local.get('autocompleteEnabled', (res: { autocompleteEnabled?: boolean }) => {
       if (res.autocompleteEnabled !== undefined) {
         this.isEnabled = res.autocompleteEnabled;
       }
     });
 
-    chrome.runtime.onMessage.addListener((msg) => {
+    chrome.runtime.onMessage.addListener((msg: { type: string; payload?: { enabled: boolean } }) => {
       if (msg.type === 'TOGGLE_AUTOCOMPLETE') {
-        this.isEnabled = msg.payload?.enabled;
+        this.isEnabled = msg.payload?.enabled ?? false;
         if (!this.isEnabled) this.closeSuggestion();
       }
     });

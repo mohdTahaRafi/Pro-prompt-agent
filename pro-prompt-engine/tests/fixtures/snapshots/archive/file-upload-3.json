@@ -1,0 +1,106 @@
+{
+  "runId": "corpus-27",
+  "tabId": 1,
+  "epoch": 1,
+  "url": "http://localhost:3000/",
+  "origin": "http://localhost:3000",
+  "title": "Document upload 3",
+  "settled": true,
+  "settleWaitedMs": 0,
+  "settleCalibration": "visible",
+  "epochSuspect": false,
+  "elements": [
+    {
+      "handle": "e0",
+      "role": "heading",
+      "name": "Application 3",
+      "nameSource": "content",
+      "tag": "h1",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 0
+    },
+    {
+      "handle": "e1",
+      "role": "form",
+      "name": "Application",
+      "nameSource": "label",
+      "tag": "form",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 1
+    },
+    {
+      "handle": "e2",
+      "role": "textbox",
+      "name": "Applicant name",
+      "nameSource": "native",
+      "tag": "input",
+      "inputType": "text",
+      "valueShape": "empty",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 2
+    },
+    {
+      "handle": "e3",
+      "role": "button",
+      "name": "Attach your ID",
+      "nameSource": "native",
+      "tag": "input",
+      "inputType": "file",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": false,
+      "sensitiveKind": "file",
+      "regionId": "form:0",
+      "ordinal": 3
+    },
+    {
+      "handle": "e4",
+      "role": "button",
+      "name": "Submit",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 4
+    }
+  ],
+  "excludedCount": 0,
+  "regions": [
+    {
+      "regionId": "form:0",
+      "label": "Application",
+      "complete": true,
+      "shown": 4,
+      "total": 4
+    },
+    {
+      "regionId": "region:root",
+      "label": "Page",
+      "complete": true,
+      "shown": 1,
+      "total": 1
+    }
+  ],
+  "unreachableRegions": [],
+  "buildMs": 2
+}

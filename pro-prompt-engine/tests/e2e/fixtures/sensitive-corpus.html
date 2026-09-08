@@ -1,0 +1,123 @@
+<!doctype html>
+<!--
+  Sensitive-field classifier fixture (§6, §8.2, §8.3).
+
+  Every field carries data-expect="password|payment|otp|file|hidden|null" —
+  the value classifySensitive() must return for it. tests/unit/never-rules.spec.ts
+  parses this file directly (happy-dom) and asserts classifySensitive() against
+  every data-expect. tests/e2e/sensitive-untouched.spec.ts drives it in a real
+  browser and asserts no field value ever reaches chrome.runtime.sendMessage.
+
+  window.__proPromptPing bridges to the isolated-world agent content script
+  (entrypoints/agent.ts) via CustomEvents — see that file's header comment.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sensitive Field Corpus</title>
+</head>
+<body>
+  <h1>Sensitive Field Corpus</h1>
+
+  <!-- ═══ Password shapes (4) ═══ -->
+  <form>
+    <label for="login-pw">Password</label>
+    <input id="login-pw" type="password" name="password" data-expect="password">
+
+    <label for="new-pw">New password</label>
+    <input id="new-pw" type="password" autocomplete="new-password" data-expect="password">
+
+    <label>Confirm passphrase
+      <input type="password" name="confirm_passphrase" data-expect="password">
+    </label>
+
+    <input type="text" name="pwd" placeholder="pwd" aria-label="pwd" data-expect="password">
+  </form>
+
+  <!-- ═══ Stripe Elements-shaped payment markup ═══ -->
+  <form id="stripe-form">
+    <label for="cc-number">Card number</label>
+    <input id="cc-number" type="text" autocomplete="cc-number" data-expect="payment">
+    <label for="cc-exp">Expiry</label>
+    <input id="cc-exp" type="text" autocomplete="cc-exp" data-expect="payment">
+    <label for="cc-csc">CVC</label>
+    <input id="cc-csc" type="text" autocomplete="cc-csc" data-expect="payment">
+  </form>
+
+  <!-- ═══ PayPal-shaped card form ═══ -->
+  <form id="paypal-form">
+    <input type="text" name="card_number" aria-label="Card Number" data-expect="payment">
+    <input type="text" name="cvv" aria-label="Security code (CVV)" data-expect="payment">
+    <input type="text" name="routing_number" placeholder="Routing number" data-expect="payment">
+    <input type="text" name="iban" placeholder="IBAN" data-expect="payment">
+  </form>
+
+  <!-- ═══ OTP shapes (3) ═══ -->
+  <form id="otp-form">
+    <!-- 6-digit split inputs -->
+    <input type="text" inputmode="numeric" maxlength="6" name="otp_digit" aria-label="One-time code digit" data-expect="otp">
+    <!-- single inputmode=numeric field -->
+    <input type="text" inputmode="numeric" maxlength="6" aria-label="Enter verification code" data-expect="otp">
+    <!-- autocomplete="one-time-code" -->
+    <input type="text" autocomplete="one-time-code" data-expect="otp">
+  </form>
+
+  <!-- ═══ file / hidden ═══ -->
+  <input type="file" name="id_upload" data-expect="file">
+  <input type="hidden" name="csrf_token" value="abc123" data-expect="hidden">
+
+  <!-- ═══ Twenty non-sensitive fields — must classify null ═══ -->
+  <form id="benign-form">
+    <input type="text" name="search" placeholder="Search products" data-expect="null">
+    <input type="number" name="quantity" placeholder="Quantity" data-expect="null">
+    <input type="text" name="postcode" placeholder="Postcode" data-expect="null">
+    <input type="tel" name="phone" placeholder="Phone number" data-expect="null">
+    <input type="date" name="dob" aria-label="Date of birth" data-expect="null">
+    <input type="text" name="first_name" placeholder="First name" data-expect="null">
+    <input type="text" name="last_name" placeholder="Last name" data-expect="null">
+    <input type="email" name="email" placeholder="Email" data-expect="null">
+    <input type="text" name="company" placeholder="Company" data-expect="null">
+    <input type="text" name="job_title" placeholder="Job title" data-expect="null">
+    <input type="text" name="city" placeholder="City" data-expect="null">
+    <input type="text" name="state" placeholder="State" data-expect="null">
+    <input type="text" name="country" placeholder="Country" data-expect="null">
+    <input type="text" name="order_number" placeholder="Order number" data-expect="null">
+    <input type="text" name="username" placeholder="Username" data-expect="null">
+    <input type="text" name="favourite_colour" placeholder="Favourite colour" data-expect="null">
+    <input type="text" name="coupon_code" placeholder="Coupon code" data-expect="null">
+    <textarea name="comments" placeholder="Comments" data-expect="null"></textarea>
+    <input type="checkbox" name="newsletter" data-expect="null">
+    <input type="text" name="website" placeholder="Website URL" data-expect="null">
+  </form>
+
+  <script>
+    // Main-world ping bridge for the e2e grant/revoke flow (agent.ts listens
+    // for 'pp-ping' on `document` and answers with 'pp-pong').
+    window.__proPromptPing = function (timeoutMs) {
+      timeoutMs = timeoutMs || 1500;
+      return new Promise(function (resolve) {
+        var done = false;
+        function onPong() {
+          if (done) return;
+          done = true;
+          document.removeEventListener('pp-pong', onPong);
+          resolve(true);
+        }
+        document.addEventListener('pp-pong', onPong);
+        document.dispatchEvent(new CustomEvent('pp-ping'));
+        setTimeout(function () {
+          if (done) return;
+          done = true;
+          document.removeEventListener('pp-pong', onPong);
+          resolve(false);
+        }, timeoutMs);
+      });
+    };
+
+    // e2e recorder hook: sensitive-untouched.spec.ts overrides
+    // chrome.runtime.sendMessage from the extension side, not here — this
+    // page has no extension API access. The service-worker-side recorder
+    // referenced in §8.2 is installed by the Playwright fixture itself.
+  </script>
+</body>
+</html>

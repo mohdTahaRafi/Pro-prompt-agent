@@ -6,6 +6,7 @@
 import { LRUCache } from './lru-cache';
 import { db } from '@lib/db/dexie-db';
 import { countTokens, truncateToTokenLimit, MAX_CONTEXT_TOKENS } from '@lib/utils/token-counter';
+import { type Result, Ok, Err } from '@lib/utils/result';
 import type { Profile } from '@lib/types/profile.types';
 import type { Snippet } from '@lib/types/snippet.types';
 
@@ -42,8 +43,18 @@ class CacheManager {
   }
 
   async getActiveProfile(): Promise<Profile | undefined> {
-    for (const p of this.profileCache.values()) { if (p.isActive) return p; }
-    const profile = await db.profiles.where('isActive').equals(1).first();
+    for (const p of this.profileCache.values()) if (p.isActive === 1) return p;
+    let profile = await db.profiles.where('isActive').equals(1).first();
+    if (!profile) {
+      // Invariant repair, not a silent fallback: something wrote isActive wrongly.
+      // Promote the lowest-id profile, persist it, and log loudly.
+      profile = await db.profiles.orderBy('id').first();
+      if (profile?.id !== undefined) {
+        console.error('[CacheManager] No active profile found — repairing to id', profile.id);
+        await this.setActiveProfile(profile.id);
+        profile.isActive = 1;
+      }
+    }
     if (profile?.id !== undefined) this.profileCache.set(profile.id, profile);
     return profile;
   }
@@ -63,18 +74,37 @@ class CacheManager {
   }
 
   async setActiveProfile(id: number): Promise<void> {
-    await db.profiles.toCollection().modify({ isActive: false });
-    await db.profiles.update(id, { isActive: true });
+    await db.profiles.toCollection().modify({ isActive: 0 });
+    await db.profiles.update(id, { isActive: 1 });
     const keys = Array.from(this.profileCache.keys());
     for (const k of keys) {
       const p = this.profileCache.get(k);
-      if (p) { p.isActive = k === id; this.profileCache.set(k, p); }
+      if (p) { p.isActive = k === id ? 1 : 0; this.profileCache.set(k, p); }
     }
   }
 
-  async deleteProfile(id: number): Promise<void> {
-    await db.profiles.delete(id);
-    this.profileCache.delete(id);
+  /**
+   * Refuses to leave the database with no active profile (PRE-3). Deleting
+   * the active profile promotes the lowest remaining id within the same
+   * transaction; deleting the last remaining profile is refused outright.
+   */
+  async deleteProfile(id: number): Promise<Result<void, 'LAST_PROFILE'>> {
+    return db.transaction('rw', db.profiles, async () => {
+      const all = await db.profiles.toArray();
+      if (all.length <= 1) return Err('LAST_PROFILE' as const);
+
+      const deleted = all.find((p) => p.id === id);
+      await db.profiles.delete(id);
+      this.profileCache.delete(id);
+
+      if (deleted?.isActive === 1) {
+        const remaining = all.filter((p) => p.id !== id);
+        const promoted = remaining.reduce((a, b) => (a.id! < b.id! ? a : b));
+        await db.profiles.update(promoted.id!, { isActive: 1 });
+        this.profileCache.delete(promoted.id!);
+      }
+      return Ok(undefined);
+    });
   }
 
   /**
@@ -162,10 +192,6 @@ class CacheManager {
   async getPromptHistory(profileId?: number, limit = 50) {
     if (profileId !== undefined) return db.promptHistory.where('profileId').equals(profileId).reverse().limit(limit).toArray();
     return db.promptHistory.orderBy('createdAt').reverse().limit(limit).toArray();
-  }
-
-  async trackEvent(event: string, data?: Record<string, unknown>): Promise<void> {
-    await db.analytics.add({ event, data, timestamp: Date.now() });
   }
 
   clearAll(): void {

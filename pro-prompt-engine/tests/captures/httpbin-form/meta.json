@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-09-08T08:41:15.412Z",
+  "sourceUrl": "https://httpbin.org/forms/post",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "notes": "a small, purpose-built multi-field real HTML form",
+  "ppSchemaVersion": 1
+}

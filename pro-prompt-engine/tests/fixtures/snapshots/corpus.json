@@ -1,0 +1,535 @@
+[
+  {
+    "id": "form-simple-6",
+    "source": "hand-built",
+    "snapshotFile": "form-simple-6.json",
+    "goal": "Submit the contact form.",
+    "gold": {
+      "targetHandle": "e20",
+      "targetDescription": "Send message button",
+      "steps": [
+        "fill in the required fields",
+        "click e20 (Send message)"
+      ]
+    }
+  },
+  {
+    "id": "product-grid-3",
+    "source": "hand-built",
+    "snapshotFile": "product-grid-3.json",
+    "goal": "Open the product page for item number 2.",
+    "gold": {
+      "targetHandle": "e19",
+      "targetDescription": "\"View details\" link for item 2",
+      "steps": [
+        "click e19 (View details)"
+      ]
+    }
+  },
+  {
+    "id": "product-grid-6",
+    "source": "hand-built",
+    "snapshotFile": "product-grid-6.json",
+    "goal": "Open the product page for item number 2.",
+    "gold": {
+      "targetHandle": "e28",
+      "targetDescription": "\"View details\" link for item 2",
+      "steps": [
+        "click e28 (View details)"
+      ]
+    }
+  },
+  {
+    "id": "sensitive-login-1",
+    "source": "hand-built",
+    "snapshotFile": "sensitive-login-1.json",
+    "goal": "Read the value currently in the password field.",
+    "gold": {
+      "targetHandle": null,
+      "targetDescription": "no handle — the password field is excluded from the snapshot entirely",
+      "steps": [
+        "state that the password field cannot be read: it was excluded as sensitive before any value was captured"
+      ]
+    }
+  },
+  {
+    "id": "sensitive-login-2",
+    "source": "hand-built",
+    "snapshotFile": "sensitive-login-2.json",
+    "goal": "Read the value currently in the password field.",
+    "gold": {
+      "targetHandle": null,
+      "targetDescription": "no handle — the password field is excluded from the snapshot entirely",
+      "steps": [
+        "state that the password field cannot be read: it was excluded as sensitive before any value was captured"
+      ]
+    }
+  },
+  {
+    "id": "two-forms-1",
+    "source": "hand-built",
+    "snapshotFile": "two-forms-1.json",
+    "goal": "Save the notification settings, not the profile.",
+    "gold": {
+      "targetHandle": "e6",
+      "targetDescription": "Save notification settings button",
+      "steps": [
+        "click e6 (Save notification settings)"
+      ]
+    }
+  },
+  {
+    "id": "two-forms-2",
+    "source": "hand-built",
+    "snapshotFile": "two-forms-2.json",
+    "goal": "Save the notification settings, not the profile.",
+    "gold": {
+      "targetHandle": "e6",
+      "targetDescription": "Save notification settings button",
+      "steps": [
+        "click e6 (Save notification settings)"
+      ]
+    }
+  },
+  {
+    "id": "duplicate-buttons-1",
+    "source": "hand-built",
+    "snapshotFile": "duplicate-buttons-1.json",
+    "goal": "Remove Row B.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "the \"Remove\" button inside Row B specifically (not Row A's identical button)",
+      "steps": [
+        "click e3 (Remove, inside Row B)"
+      ]
+    }
+  },
+  {
+    "id": "duplicate-buttons-2",
+    "source": "hand-built",
+    "snapshotFile": "duplicate-buttons-2.json",
+    "goal": "Remove Row B.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "the \"Remove\" button inside Row B specifically (not Row A's identical button)",
+      "steps": [
+        "click e3 (Remove, inside Row B)"
+      ]
+    }
+  },
+  {
+    "id": "file-upload-1",
+    "source": "hand-built",
+    "snapshotFile": "file-upload-1.json",
+    "goal": "Attach the required ID document.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "the file input — described but not actionable; no upload verb exists yet",
+      "steps": [
+        "note that e3 needs a document the agent cannot supply — ask the user for the file"
+      ]
+    }
+  },
+  {
+    "id": "long-list-4",
+    "source": "hand-built",
+    "snapshotFile": "long-list-4.json",
+    "goal": "Open the last result in the list.",
+    "gold": {
+      "targetHandle": "e60",
+      "targetDescription": "the \"View details\" link for the final item",
+      "steps": [
+        "click e60 (View details)"
+      ]
+    }
+  },
+  {
+    "id": "nav-page-1",
+    "source": "hand-built",
+    "snapshotFile": "nav-page-1.json",
+    "goal": "Go to the API reference page.",
+    "gold": {
+      "targetHandle": "e7",
+      "targetDescription": "\"API reference\" navigation link",
+      "steps": [
+        "click e7 (API reference)"
+      ]
+    }
+  },
+  {
+    "id": "prefilled-form-1",
+    "source": "hand-built",
+    "snapshotFile": "prefilled-form-1.json",
+    "goal": "Fill in the empty bio field — leave the name as it is.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "the \"Bio\" field, which is empty (the \"Full name\" field already has a value and must not be targeted)",
+      "steps": [
+        "type into e3 (Bio)"
+      ]
+    }
+  },
+  {
+    "id": "unnamed-control-1",
+    "source": "hand-built",
+    "snapshotFile": "unnamed-control-1.json",
+    "goal": "Confirm the action.",
+    "gold": {
+      "targetHandle": "e2",
+      "targetDescription": "Confirm button",
+      "steps": [
+        "click e2 (Confirm)"
+      ]
+    }
+  },
+  {
+    "id": "settings-with-toggle-40",
+    "source": "hand-built",
+    "snapshotFile": "settings-with-toggle-40.json",
+    "goal": "Turn on marketing emails without changing the analytics setting.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "\"Receive marketing emails\" checkbox (currently unchecked)",
+      "steps": [
+        "click e3 (Receive marketing emails)"
+      ]
+    }
+  },
+  {
+    "id": "dol-whd-complaint",
+    "source": "frozen-capture",
+    "snapshotFile": "dol-whd-complaint.json",
+    "goal": "Search the site for 'minimum wage'.",
+    "gold": {
+      "targetHandle": "e12",
+      "targetDescription": "\"Click to Search\" button, after typing into the search box",
+      "steps": [
+        "type 'minimum wage' into e11 (search)",
+        "click e12 (Click to Search)"
+      ]
+    }
+  },
+  {
+    "id": "govuk-home",
+    "source": "frozen-capture",
+    "snapshotFile": "govuk-home.json",
+    "goal": "Search GOV.UK for 'passport renewal'.",
+    "gold": {
+      "targetHandle": "e21",
+      "targetDescription": "\"Search GOV.UK\" button, after typing into the search box",
+      "steps": [
+        "type 'passport renewal' into e20 (Search)",
+        "click e21 (Search GOV.UK)"
+      ]
+    }
+  },
+  {
+    "id": "wikipedia-browser-article",
+    "source": "frozen-capture",
+    "snapshotFile": "wikipedia-browser-article.json",
+    "goal": "Open the References section from the article's table of contents.",
+    "gold": {
+      "targetHandle": "e49",
+      "targetDescription": "\"References\" entry in the on-page table of contents",
+      "steps": [
+        "click e49 (References, in the table of contents)"
+      ]
+    }
+  },
+  {
+    "id": "mdn-array-docs",
+    "source": "frozen-capture",
+    "snapshotFile": "mdn-array-docs.json",
+    "goal": "Open the sidebar guide on Flexbox (the CSS layout guide, not the reference page).",
+    "gold": {
+      "targetHandle": "e28",
+      "targetDescription": "\"Flexbox\" link under the CSS guides section of the sidebar",
+      "steps": [
+        "click e28 (Flexbox)"
+      ]
+    }
+  },
+  {
+    "id": "hn-front",
+    "source": "frozen-capture",
+    "snapshotFile": "hn-front.json",
+    "goal": "Open the comments for the top story on the front page.",
+    "gold": {
+      "targetHandle": "e19",
+      "targetDescription": "\"50 comments\" link for the first (top-ranked) story",
+      "steps": [
+        "click e19 (50 comments, on the top story)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-login",
+    "source": "frozen-capture",
+    "snapshotFile": "herokuapp-login.json",
+    "goal": "Log in as tomsmith with the password shown in the page instructions.",
+    "gold": {
+      "targetHandle": null,
+      "targetDescription": "no handle — the password field is excluded from the snapshot entirely, as sensitive",
+      "steps": [
+        "type 'tomsmith' into e2 (Username)",
+        "state that the password field cannot be read or filled from this snapshot: it was excluded as sensitive before any value was captured — ask the user to enter it themselves"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-checkboxes",
+    "source": "frozen-capture",
+    "snapshotFile": "herokuapp-checkboxes.json",
+    "goal": "Check the second checkbox and leave the first one as it is.",
+    "gold": {
+      "targetHandle": "e2",
+      "targetDescription": "the second checkbox — neither checkbox has an accessible name, so DOM order is what distinguishes them",
+      "steps": [
+        "click e2 (second checkbox, unnamed)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-dropdown",
+    "source": "frozen-capture",
+    "snapshotFile": "herokuapp-dropdown.json",
+    "goal": "Select 'Option 2' from the dropdown.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "the native dropdown/select control",
+      "steps": [
+        "select 'Option 2' in e1 (dropdown)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-upload",
+    "source": "frozen-capture",
+    "snapshotFile": "herokuapp-upload.json",
+    "goal": "Upload my resume file.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "the file input — described but not actionable; no upload verb exists yet, and the agent has no file to supply",
+      "steps": [
+        "note that e1 needs a file the agent cannot supply — ask the user for the file to upload"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-tables",
+    "source": "frozen-capture",
+    "snapshotFile": "herokuapp-tables.json",
+    "goal": "Delete the second row of Example 1's table.",
+    "gold": {
+      "targetHandle": "e4",
+      "targetDescription": "the \"delete\" link in the second row of Example 1's table (region repeat:7ks21z, not the identical-looking delete links in Example 2)",
+      "steps": [
+        "click e4 (delete, second row of Example 1)"
+      ]
+    }
+  },
+  {
+    "id": "github-repo",
+    "source": "frozen-capture",
+    "snapshotFile": "github-repo.json",
+    "goal": "Open the repository's Issues tab.",
+    "gold": {
+      "targetHandle": "e30",
+      "targetDescription": "\"Issues\" tab link in the repo's secondary nav (164 open issues)",
+      "steps": [
+        "click e30 (Issues)"
+      ]
+    }
+  },
+  {
+    "id": "python-docs-tutorial",
+    "source": "frozen-capture",
+    "snapshotFile": "python-docs-tutorial.json",
+    "goal": "Open the page for reporting a documentation bug.",
+    "gold": {
+      "targetHandle": "e16",
+      "targetDescription": "\"Report a bug\" link in the page's side nav",
+      "steps": [
+        "click e16 (Report a bug)"
+      ]
+    }
+  },
+  {
+    "id": "wikipedia-population-table",
+    "source": "frozen-capture",
+    "snapshotFile": "wikipedia-population-table.json",
+    "goal": "Open the definition of the UN continental region classification used in the table.",
+    "gold": {
+      "targetHandle": "e93",
+      "targetDescription": "\"UN continental region\" link in the table's column-header area",
+      "steps": [
+        "click e93 (UN continental region)"
+      ]
+    }
+  },
+  {
+    "id": "httpbin-form",
+    "source": "frozen-capture",
+    "snapshotFile": "httpbin-form.json",
+    "goal": "Order a large pizza with extra cheese and onion for John Doe, phone 555-1234, delivery at 18:00, no special instructions.",
+    "gold": {
+      "targetHandle": "e12",
+      "targetDescription": "\"Submit order\" button, after filling in the required fields",
+      "steps": [
+        "type 'John Doe' into e0 (Customer name)",
+        "type '555-1234' into e1 (Telephone)",
+        "click e5 (Large)",
+        "click e7 (Extra Cheese)",
+        "click e8 (Onion)",
+        "type '18:00' into e10 (Preferred delivery time)",
+        "click e12 (Submit order)"
+      ]
+    }
+  },
+  {
+    "id": "wikipedia-login",
+    "source": "frozen-capture",
+    "snapshotFile": "wikipedia-login.json",
+    "goal": "Log in as 'exampleuser' and check 'keep me logged in'.",
+    "gold": {
+      "targetHandle": null,
+      "targetDescription": "no handle — the password field is excluded from the snapshot entirely, as sensitive",
+      "steps": [
+        "type 'exampleuser' into e1 (Username)",
+        "click e2 (Keep me logged in)",
+        "state that the password field cannot be read or filled from this snapshot: it was excluded as sensitive before any value was captured — ask the user to enter it themselves"
+      ]
+    }
+  },
+  {
+    "id": "mdn-css-flexbox",
+    "source": "live-panel",
+    "snapshotFile": "mdn-css-flexbox.json",
+    "goal": "Filter the sidebar reference list to 'grid'.",
+    "gold": {
+      "targetHandle": "e68",
+      "targetDescription": "the sidebar's \"Filter sidebar\" text box",
+      "steps": [
+        "type 'grid' into e68 (Filter sidebar)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-add-remove",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-add-remove.json",
+    "goal": "Add a new deletable element to the page.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "\"Add Element\" button — no delete buttons exist yet since nothing has been added",
+      "steps": [
+        "click e1 (Add Element)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-inputs",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-inputs.json",
+    "goal": "Enter 42 into the number field.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "the page's only number input",
+      "steps": [
+        "type '42' into e1 (number input)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-dynamic-content",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-dynamic-content.json",
+    "goal": "Reload the page with a different set of dynamic content.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "the \"click here\" link that reloads the page with a different content variant",
+      "steps": [
+        "click e1 (click here)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-shadowdom",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-shadowdom.json",
+    "goal": "Open the Elemental Selenium sponsor link.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "\"Elemental Selenium\" link — this page's real interactive content lives inside a shadow root as plain text list items, so this is the only meaningfully named actionable element",
+      "steps": [
+        "click e1 (Elemental Selenium)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-iframe-editor",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-iframe-editor.json",
+    "goal": "Dismiss the editor's browser-notification banner.",
+    "gold": {
+      "targetHandle": "e20",
+      "targetDescription": "\"Close\" control on the notification banner — the TinyMCE toolbar buttons (Bold, Italic, etc.) are all disabled in this snapshot and not valid targets",
+      "steps": [
+        "click e20 (Close)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-jqueryui-menu",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-jqueryui-menu.json",
+    "goal": "Open the 'Enabled' menu item, not the disabled one.",
+    "gold": {
+      "targetHandle": "e6",
+      "targetDescription": "\"Enabled\" link — distinct from the identically-styled \"Disabled\" item just above it",
+      "steps": [
+        "click e6 (Enabled, not the Disabled item above it)"
+      ]
+    }
+  },
+  {
+    "id": "github-issues-list",
+    "source": "live-panel",
+    "snapshotFile": "github-issues-list.json",
+    "goal": "Open a new issue.",
+    "gold": {
+      "targetHandle": "e94",
+      "targetDescription": "\"New issue\" button",
+      "steps": [
+        "click e94 (New issue)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-forgot-password",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-forgot-password.json",
+    "goal": "Request a password reset for user@example.com.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "\"Retrieve password\" button, after filling in the e-mail field",
+      "steps": [
+        "type 'user@example.com' into e2 (E-mail)",
+        "click e3 (Retrieve password)"
+      ]
+    }
+  },
+  {
+    "id": "httpbin-home",
+    "source": "live-panel",
+    "snapshotFile": "httpbin-home.json",
+    "goal": "Open the sample HTML form page.",
+    "gold": {
+      "targetHandle": "e106",
+      "targetDescription": "\"HTML form\" link, in the page footer",
+      "steps": [
+        "click e106 (HTML form)"
+      ]
+    }
+  }
+]

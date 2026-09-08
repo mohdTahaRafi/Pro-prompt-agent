@@ -1,0 +1,133 @@
+[
+  {
+    "id": "mdn-css-flexbox",
+    "source": "live-panel",
+    "snapshotFile": "mdn-css-flexbox.json",
+    "goal": "Filter the sidebar reference list to 'grid'.",
+    "gold": {
+      "targetHandle": "e68",
+      "targetDescription": "the sidebar's \"Filter sidebar\" text box",
+      "steps": [
+        "type 'grid' into e68 (Filter sidebar)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-add-remove",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-add-remove.json",
+    "goal": "Add a new deletable element to the page.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "\"Add Element\" button — no delete buttons exist yet since nothing has been added",
+      "steps": [
+        "click e1 (Add Element)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-inputs",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-inputs.json",
+    "goal": "Enter 42 into the number field.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "the page's only number input",
+      "steps": [
+        "type '42' into e1 (number input)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-dynamic-content",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-dynamic-content.json",
+    "goal": "Reload the page with a different set of dynamic content.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "the \"click here\" link that reloads the page with a different content variant",
+      "steps": [
+        "click e1 (click here)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-shadowdom",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-shadowdom.json",
+    "goal": "Open the Elemental Selenium sponsor link.",
+    "gold": {
+      "targetHandle": "e1",
+      "targetDescription": "\"Elemental Selenium\" link — this page's real interactive content lives inside a shadow root as plain text list items, so this is the only meaningfully named actionable element",
+      "steps": [
+        "click e1 (Elemental Selenium)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-iframe-editor",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-iframe-editor.json",
+    "goal": "Dismiss the editor's browser-notification banner.",
+    "gold": {
+      "targetHandle": "e20",
+      "targetDescription": "\"Close\" control on the notification banner — the TinyMCE toolbar buttons (Bold, Italic, etc.) are all disabled in this snapshot and not valid targets",
+      "steps": [
+        "click e20 (Close)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-jqueryui-menu",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-jqueryui-menu.json",
+    "goal": "Open the 'Enabled' menu item, not the disabled one.",
+    "gold": {
+      "targetHandle": "e6",
+      "targetDescription": "\"Enabled\" link — distinct from the identically-styled \"Disabled\" item just above it",
+      "steps": [
+        "click e6 (Enabled, not the Disabled item above it)"
+      ]
+    }
+  },
+  {
+    "id": "github-issues-list",
+    "source": "live-panel",
+    "snapshotFile": "github-issues-list.json",
+    "goal": "Open a new issue.",
+    "gold": {
+      "targetHandle": "e94",
+      "targetDescription": "\"New issue\" button",
+      "steps": [
+        "click e94 (New issue)"
+      ]
+    }
+  },
+  {
+    "id": "herokuapp-forgot-password",
+    "source": "live-panel",
+    "snapshotFile": "herokuapp-forgot-password.json",
+    "goal": "Request a password reset for user@example.com.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "\"Retrieve password\" button, after filling in the e-mail field",
+      "steps": [
+        "type 'user@example.com' into e2 (E-mail)",
+        "click e3 (Retrieve password)"
+      ]
+    }
+  },
+  {
+    "id": "httpbin-home",
+    "source": "live-panel",
+    "snapshotFile": "httpbin-home.json",
+    "goal": "Open the sample HTML form page.",
+    "gold": {
+      "targetHandle": "e106",
+      "targetDescription": "\"HTML form\" link, in the page footer",
+      "steps": [
+        "click e106 (HTML form)"
+      ]
+    }
+  }
+]

@@ -1,0 +1,198 @@
+[
+  {
+    "id": "form-simple-6",
+    "source": "hand-built",
+    "snapshotFile": "form-simple-6.json",
+    "goal": "Submit the contact form.",
+    "gold": {
+      "targetHandle": "e20",
+      "targetDescription": "Send message button",
+      "steps": [
+        "fill in the required fields",
+        "click e20 (Send message)"
+      ]
+    }
+  },
+  {
+    "id": "product-grid-3",
+    "source": "hand-built",
+    "snapshotFile": "product-grid-3.json",
+    "goal": "Open the product page for item number 2.",
+    "gold": {
+      "targetHandle": "e19",
+      "targetDescription": "\"View details\" link for item 2",
+      "steps": [
+        "click e19 (View details)"
+      ]
+    }
+  },
+  {
+    "id": "product-grid-6",
+    "source": "hand-built",
+    "snapshotFile": "product-grid-6.json",
+    "goal": "Open the product page for item number 2.",
+    "gold": {
+      "targetHandle": "e28",
+      "targetDescription": "\"View details\" link for item 2",
+      "steps": [
+        "click e28 (View details)"
+      ]
+    }
+  },
+  {
+    "id": "sensitive-login-1",
+    "source": "hand-built",
+    "snapshotFile": "sensitive-login-1.json",
+    "goal": "Read the value currently in the password field.",
+    "gold": {
+      "targetHandle": null,
+      "targetDescription": "no handle — the password field is excluded from the snapshot entirely",
+      "steps": [
+        "state that the password field cannot be read: it was excluded as sensitive before any value was captured"
+      ]
+    }
+  },
+  {
+    "id": "sensitive-login-2",
+    "source": "hand-built",
+    "snapshotFile": "sensitive-login-2.json",
+    "goal": "Read the value currently in the password field.",
+    "gold": {
+      "targetHandle": null,
+      "targetDescription": "no handle — the password field is excluded from the snapshot entirely",
+      "steps": [
+        "state that the password field cannot be read: it was excluded as sensitive before any value was captured"
+      ]
+    }
+  },
+  {
+    "id": "two-forms-1",
+    "source": "hand-built",
+    "snapshotFile": "two-forms-1.json",
+    "goal": "Save the notification settings, not the profile.",
+    "gold": {
+      "targetHandle": "e6",
+      "targetDescription": "Save notification settings button",
+      "steps": [
+        "click e6 (Save notification settings)"
+      ]
+    }
+  },
+  {
+    "id": "two-forms-2",
+    "source": "hand-built",
+    "snapshotFile": "two-forms-2.json",
+    "goal": "Save the notification settings, not the profile.",
+    "gold": {
+      "targetHandle": "e6",
+      "targetDescription": "Save notification settings button",
+      "steps": [
+        "click e6 (Save notification settings)"
+      ]
+    }
+  },
+  {
+    "id": "duplicate-buttons-1",
+    "source": "hand-built",
+    "snapshotFile": "duplicate-buttons-1.json",
+    "goal": "Remove Row B.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "the \"Remove\" button inside Row B specifically (not Row A's identical button)",
+      "steps": [
+        "click e3 (Remove, inside Row B)"
+      ]
+    }
+  },
+  {
+    "id": "duplicate-buttons-2",
+    "source": "hand-built",
+    "snapshotFile": "duplicate-buttons-2.json",
+    "goal": "Remove Row B.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "the \"Remove\" button inside Row B specifically (not Row A's identical button)",
+      "steps": [
+        "click e3 (Remove, inside Row B)"
+      ]
+    }
+  },
+  {
+    "id": "file-upload-1",
+    "source": "hand-built",
+    "snapshotFile": "file-upload-1.json",
+    "goal": "Attach the required ID document.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "the file input — described but not actionable; no upload verb exists yet",
+      "steps": [
+        "note that e3 needs a document the agent cannot supply — ask the user for the file"
+      ]
+    }
+  },
+  {
+    "id": "long-list-4",
+    "source": "hand-built",
+    "snapshotFile": "long-list-4.json",
+    "goal": "Open the last result in the list.",
+    "gold": {
+      "targetHandle": "e60",
+      "targetDescription": "the \"View details\" link for the final item",
+      "steps": [
+        "click e60 (View details)"
+      ]
+    }
+  },
+  {
+    "id": "nav-page-1",
+    "source": "hand-built",
+    "snapshotFile": "nav-page-1.json",
+    "goal": "Go to the API reference page.",
+    "gold": {
+      "targetHandle": "e7",
+      "targetDescription": "\"API reference\" navigation link",
+      "steps": [
+        "click e7 (API reference)"
+      ]
+    }
+  },
+  {
+    "id": "prefilled-form-1",
+    "source": "hand-built",
+    "snapshotFile": "prefilled-form-1.json",
+    "goal": "Fill in the empty bio field — leave the name as it is.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "the \"Bio\" field, which is empty (the \"Full name\" field already has a value and must not be targeted)",
+      "steps": [
+        "type into e3 (Bio)"
+      ]
+    }
+  },
+  {
+    "id": "unnamed-control-1",
+    "source": "hand-built",
+    "snapshotFile": "unnamed-control-1.json",
+    "goal": "Confirm the action.",
+    "gold": {
+      "targetHandle": "e2",
+      "targetDescription": "Confirm button",
+      "steps": [
+        "click e2 (Confirm)"
+      ]
+    }
+  },
+  {
+    "id": "settings-with-toggle-40",
+    "source": "hand-built",
+    "snapshotFile": "settings-with-toggle-40.json",
+    "goal": "Turn on marketing emails without changing the analytics setting.",
+    "gold": {
+      "targetHandle": "e3",
+      "targetDescription": "\"Receive marketing emails\" checkbox (currently unchecked)",
+      "steps": [
+        "click e3 (Receive marketing emails)"
+      ]
+    }
+  }
+]

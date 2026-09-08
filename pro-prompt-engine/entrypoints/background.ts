@@ -2,12 +2,23 @@
  * Background Service Worker — Pro Prompt Engine
  *
  * WXT entrypoint: auto-registers as MV3 service worker.
- * Handles all message routing, lifecycle management, and
- * the new bidirectional keep-alive ping system.
+ * Handles all message routing and lifecycle management.
+ *
+ * [Phase 1 §5.6] The three-layer keep-alive (SW setInterval ping, the
+ * 'sw-keepalive' alarm, and content.ts's ping-back) is deleted. It existed
+ * to keep the service worker alive across a ~30s WebLLM inference; every
+ * action wakes the SW by message anyway, and with the run loop moving to the
+ * offscreen document in Phase 5 nothing needs it. It also messaged every
+ * open tab every 20 seconds via chrome.tabs, which the extension has no
+ * `tabs` permission for — chrome.tabs.query/sendMessage do not throw
+ * without it, they silently return stripped results (§2), which is why the
+ * defect survived undetected. Retained: the offscreen document's own GPU
+ * no-op tick (offscreen/main.ts) — it solves VRAM eviction, a different
+ * problem, and is unaffected by any of this.
  */
 
 import { routeInference, getActiveProvider, setActiveProvider, getProviderStatus } from '@lib/adapters/llm-router';
-import { loadWebGPUModel, unloadWebGPUModel, getWebGPUState } from '@lib/adapters/webgpu-adapter';
+import { loadWebGPUModel, unloadWebGPUModel } from '@lib/adapters/webgpu-adapter';
 import { cacheManager } from '@lib/cache/cache-manager';
 import { seedDefaultProfiles, seedDefaultSnippets } from '@lib/db/dexie-db';
 import { scrubPII, hasPII } from '@lib/utils/pii-scrubber';
@@ -15,6 +26,9 @@ import { scorePrompt } from '@lib/agents/scorer';
 import { generatePrompt } from '@lib/agents/generator';
 import { runRefactorLoop } from '@lib/agents/loop-controller';
 import { comprehendContext } from '@lib/agents/comprehension';
+import { grantOrigin, revokeOrigin, reconcileGrants } from '@lib/policy/scope';
+import { getActiveSitePolicies } from '@lib/db/policy-store';
+import { ExtensionRequest } from '@lib/schemas/message.schema';
 import type { LLMRequest } from '@lib/types/llm.types';
 import type { ExtensionMessage, ExtensionResponse } from '@lib/types/message.types';
 import type { Profile } from '@lib/types/profile.types';
@@ -24,61 +38,26 @@ export default defineBackground(() => {
   console.log('[Pro Prompt Engine] Service Worker initialized (WXT)');
 
   // ════════════════════════════════════════
-  // Bidirectional Keep-Alive System
-  // (Only active when WebGPU is the selected provider —
-  //  pinging Groq/Ollama serves no purpose)
-  // ════════════════════════════════════════
-
-  // SW-side heartbeat: ping all content scripts every 20 seconds (WebGPU only)
-  setInterval(async () => {
-    const result = await chrome.storage.local.get('activeProvider');
-    const provider = result.activeProvider || 'webgpu';
-    if (provider !== 'webgpu') return; // Skip heartbeat for non-WebGPU providers
-
-    chrome.tabs.query({ status: 'complete' }, (tabs) => {
-      for (const tab of tabs) {
-        if (tab.id) {
-          chrome.tabs.sendMessage(tab.id, { type: 'SW_HEARTBEAT' }).catch(() => {
-            // Tab may not have content script — ignore
-          });
-        }
-      }
-    });
-  }, 20_000);
-
-  // Alarm-based backup heartbeat (survives SW sleep in edge cases)
-  chrome.alarms.create('sw-keepalive', { periodInMinutes: 0.4 }); // ~24 seconds
-
-  chrome.alarms.onAlarm.addListener(async (alarm) => {
-    if (alarm.name === 'sw-keepalive') {
-      console.log('[SW] Alarm heartbeat tick');
-    }
-    if (alarm.name === 'webgpu-heartbeat') {
-      // Only ensure offscreen if WebGPU is active provider
-      const result = await chrome.storage.local.get('activeProvider');
-      const provider = result.activeProvider || 'webgpu';
-      if (provider === 'webgpu') {
-        ensureOffscreen().catch(console.error);
-      }
-    }
-  });
-
-  // ════════════════════════════════════════
   // Message Router
   // ════════════════════════════════════════
 
   chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendResponse) => {
-    // Skip messages targeted at offscreen document
-    if ((message as any).target === 'offscreen') return;
+    // Skip messages targeted at the offscreen document — its own listener
+    // (entrypoints/offscreen/main.ts) handles those on a separate protocol
+    // that this schema does not cover.
+    if ((message as { target?: string }).target === 'offscreen') return;
 
-    // Handle keep-alive ping from content scripts
-    if (message.type === 'KEEP_ALIVE_PING') {
-      sendResponse({ type: 'KEEP_ALIVE_PONG', timestamp: Date.now() });
+    // [Phase 1 §7.1] Every message is parsed through ExtensionRequest before
+    // its handler runs. A message that fails validation is answered with
+    // INVALID_MESSAGE and never partially handled — never coerced.
+    const parsed = ExtensionRequest.safeParse(message);
+    if (!parsed.success) {
+      console.error('[SW] Rejected invalid message:', message?.type, parsed.error.issues);
+      sendResponse({ status: 'error', message: 'INVALID_MESSAGE' } satisfies ExtensionResponse);
       return;
     }
 
-    // Skip notifications that don't need responses
-    if (message.type === 'MODEL_STATE_CHANGED' || message.type === 'SW_HEARTBEAT_ACK') {
+    if (message.type === 'MODEL_STATE_CHANGED') {
       sendResponse({ status: 'success' });
       return true;
     }
@@ -98,11 +77,37 @@ export default defineBackground(() => {
 
   async function handleMessage(
     message: ExtensionMessage,
-    _sender: chrome.runtime.MessageSender,
+    sender: chrome.runtime.MessageSender,
   ): Promise<ExtensionResponse> {
     switch (message.type) {
       case 'PING':
         return { status: 'success', data: { timestamp: Date.now() } };
+
+      // [Phase 2] agent.content.ts's own tab id — see message.schema.ts's
+      // GetTabIdRequest comment. -1 when the sender isn't a tab (shouldn't
+      // happen for a per-origin content script, but never thrown on).
+      case 'GET_TAB_ID':
+        return { status: 'success', data: { tabId: sender.tab?.id ?? -1 } };
+
+      case 'GET_ACTIVE_GRANTS': {
+        const policies = await getActiveSitePolicies();
+        return { status: 'success', data: policies.map((p) => p.origin) };
+      }
+
+      // ── Per-Origin Runtime Grants (PRE-4, PR-SEC-5…9) ──
+      case 'GRANT_ORIGIN': {
+        const { origin } = message.payload as { origin: string };
+        const granted = await grantOrigin(origin);
+        return granted
+          ? { status: 'success', data: { origin } }
+          : { status: 'error', message: 'GRANT_DECLINED_OR_FAILED' };
+      }
+
+      case 'REVOKE_ORIGIN': {
+        const { origin } = message.payload as { origin: string };
+        await revokeOrigin(origin);
+        return { status: 'success', data: { origin } };
+      }
 
       // ── LLM Inference ──
       case 'INFERENCE': {
@@ -145,7 +150,7 @@ export default defineBackground(() => {
         }
 
         const result = await runRefactorLoop(prompt, profileContext, profileGuidelines, scoringGuidelinesMd);
-        
+
         // Save to prompt history
         if (profileId) {
           await cacheManager.savePromptHistory({
@@ -158,7 +163,7 @@ export default defineBackground(() => {
             tokensUsed: result.tokensUsed || 0,
           });
         }
-        
+
         return { status: 'success', data: result };
       }
 
@@ -185,20 +190,8 @@ export default defineBackground(() => {
 
         const verbosity = payload.detailLevel ?? 0.5;
         const result = await generatePrompt(description, verbosity, genContext, genGuidelines);
-        
-        return { status: 'success', data: { generatedPrompt: result.text, provider: result.provider, latencyMs: result.latencyMs } };
-      }
 
-      // ── Autocomplete ──
-      case 'AUTOCOMPLETE': {
-        const { text } = message.payload as { text: string };
-        if (!text) return { status: 'success', data: { suggestion: '' } };
-        const result = await routeInference({
-          systemPrompt: 'Complete the following text naturally. Output ONLY the continuation, nothing else.',
-          userPrompt: text, maxTokens: 30, temperature: 0.2,
-          stopSequences: ['.', '\n', '!', '?'],
-        });
-        return { status: 'success', data: { suggestion: result.content.trim(), provider: result.provider, latencyMs: result.latencyMs } };
+        return { status: 'success', data: { generatedPrompt: result.text, provider: result.provider, latencyMs: result.latencyMs } };
       }
 
       // ── Provider Management ──
@@ -284,8 +277,10 @@ export default defineBackground(() => {
 
       case 'DELETE_PROFILE': {
         const { id } = message.payload as { id: number };
-        await cacheManager.deleteProfile(id);
-        return { status: 'success' };
+        const result = await cacheManager.deleteProfile(id);
+        return result.ok
+          ? { status: 'success' }
+          : { status: 'error', message: result.error };
       }
 
       // ── Snippet Operations ──
@@ -315,7 +310,7 @@ export default defineBackground(() => {
         const payload = message.payload as any;
         let contextText = payload.context || payload.text;
         const targetProfileId = payload.profileId || (await cacheManager.getActiveProfile())?.id;
-        
+
         if (!targetProfileId || !contextText) return { status: 'error', message: 'Missing profileId or context' };
 
         // Process with Comprehension Agent if raw web text or selection
@@ -325,7 +320,6 @@ export default defineBackground(() => {
         }
 
         const result = await cacheManager.appendContext(targetProfileId, contextText);
-        await cacheManager.trackEvent('context_added', { profileId: targetProfileId, truncated: result.truncated });
         return { status: 'success', data: result };
       }
 
@@ -354,21 +348,6 @@ export default defineBackground(() => {
         return { status: 'success' };
       }
 
-      // ── Web Page Scan (relayed to active tab's content script) ──
-      case 'SCAN_WEBPAGE': {
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const tabId = tabs[0]?.id;
-        if (!tabId) return { status: 'error', message: 'No active tab' };
-        try {
-          const resp = await chrome.tabs.sendMessage(tabId, { type: 'SCAN_WEBPAGE' });
-          return resp?.status === 'success'
-            ? { status: 'success', data: resp.data }
-            : { status: 'error', message: 'Content script could not scan page' };
-        } catch {
-          return { status: 'error', message: 'Content script not available on this page' };
-        }
-      }
-
       default:
         return { status: 'error', message: `Unknown message type: ${message.type}` };
     }
@@ -378,7 +357,12 @@ export default defineBackground(() => {
   // Offscreen Document Management
   // ════════════════════════════════════════
 
-  let creatingOffscreen = false;
+  // A promise, not a boolean: a boolean guard only stops a second caller
+  // from starting a second createDocument() — it does not make that second
+  // caller wait for the first one to actually finish, so it can return
+  // early and let its caller message an offscreen document that isn't
+  // ready yet. Every concurrent caller awaits the same in-flight creation.
+  let creatingOffscreen: Promise<void> | null = null;
 
   async function ensureOffscreen(): Promise<void> {
     const url = chrome.runtime.getURL('offscreen.html');
@@ -388,19 +372,38 @@ export default defineBackground(() => {
     }).catch(() => []);
 
     if (contexts?.length > 0) return;
-    if (creatingOffscreen) return;
+    if (creatingOffscreen) return creatingOffscreen;
 
-    creatingOffscreen = true;
-    try {
-      await chrome.offscreen.createDocument({
-        url: 'offscreen.html',
-        reasons: ['WORKERS' as any],
-        justification: 'Running WebLLM inference via WebGPU',
-      });
-    } finally {
-      creatingOffscreen = false;
-    }
+    creatingOffscreen = (async () => {
+      try {
+        await chrome.offscreen.createDocument({
+          url: 'offscreen.html',
+          reasons: ['WORKERS' as any],
+          justification: 'Running WebLLM inference via WebGPU',
+        });
+      } finally {
+        creatingOffscreen = null;
+      }
+    })();
+    return creatingOffscreen;
   }
+
+  // ════════════════════════════════════════
+  // Per-Origin Grant Drift Reconciliation (§4.3)
+  // ════════════════════════════════════════
+
+  // Fires when the user revokes from chrome://extensions directly. Does not
+  // fire for revocations that happened while the browser was closed — that
+  // case is covered by reconcileGrants() below.
+  chrome.permissions.onRemoved.addListener(async ({ origins }) => {
+    for (const pattern of origins ?? []) {
+      const origin = pattern.replace(/\/\*$/, '');
+      await revokeOrigin(origin);   // idempotent; unregister of a missing id is caught
+    }
+  });
+
+  chrome.runtime.onStartup.addListener(reconcileGrants);
+  chrome.runtime.onInstalled.addListener(reconcileGrants);
 
   // ════════════════════════════════════════
   // Extension Lifecycle

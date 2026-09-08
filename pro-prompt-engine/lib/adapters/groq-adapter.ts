@@ -4,11 +4,15 @@
  */
 import type { LLMRequest, LLMResponse } from '@lib/types/llm.types';
 
-const DEFAULT_MODEL = 'llama-3.1-70b-versatile';
+// [Phase 1 PRE-5] llama-3.1-70b-versatile was decommissioned by Groq.
+// Also surfaced as an editable field in the dashboard (options/App.tsx) so a
+// hard-coded provider model id going stale again doesn't need an extension
+// update to fix.
+const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 
 export async function groqInfer(request: LLMRequest, signal?: AbortSignal): Promise<LLMResponse> {
   const start = performance.now();
-  
+
   const { apiKey, model } = await getGroqConfig();
   if (!apiKey) throw new Error('Groq API key not configured. Set it in Settings.');
 
@@ -55,10 +59,27 @@ export async function checkGroqHealth(): Promise<boolean> {
   } catch { return false; }
 }
 
+/**
+ * [Phase 1 PRE-5] The key lives in storage.local, never storage.sync — sync
+ * replicates to every browser signed into the same Google account, so a key
+ * entered on a work machine would appear on a personal one. On first read
+ * after upgrade this migrates any existing synced copy into storage.local
+ * and DELETES the synced copy — leaving it behind would mean the key is
+ * still replicated and the fix would be cosmetic only. keyMigrationNotice is
+ * how the dashboard shows a one-time notice explaining the move.
+ */
+interface GroqStorageShape { groqApiKey?: string; groqModel?: string }
+
 async function getGroqConfig(): Promise<{ apiKey: string; model: string }> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(['groqApiKey', 'groqModel'], (r) => {
-      resolve({ apiKey: r.groqApiKey || '', model: r.groqModel || DEFAULT_MODEL });
-    });
-  });
+  const local = await chrome.storage.local.get<GroqStorageShape>(['groqApiKey', 'groqModel']);
+  if (local.groqApiKey) return { apiKey: local.groqApiKey, model: local.groqModel || DEFAULT_MODEL };
+
+  const synced = await chrome.storage.sync.get<GroqStorageShape>(['groqApiKey', 'groqModel']);
+  if (synced.groqApiKey) {
+    await chrome.storage.local.set({ groqApiKey: synced.groqApiKey, groqModel: synced.groqModel || DEFAULT_MODEL });
+    await chrome.storage.sync.remove(['groqApiKey', 'groqModel']);
+    await chrome.storage.local.set({ keyMigrationNotice: Date.now() });
+    return { apiKey: synced.groqApiKey, model: synced.groqModel || DEFAULT_MODEL };
+  }
+  return { apiKey: '', model: DEFAULT_MODEL };
 }

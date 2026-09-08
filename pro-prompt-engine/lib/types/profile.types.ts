@@ -3,7 +3,7 @@ export interface Profile {
   name: string;
   description: string;
   icon: string;
-  isActive: boolean;
+  isActive: 0 | 1;     // [Phase 1] not boolean — IndexedDB cannot index a boolean value
   isCustom: boolean;
   contextMd: string;
   promptGuidelinesMd: string;

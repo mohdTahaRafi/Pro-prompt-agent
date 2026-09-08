@@ -79,7 +79,7 @@ export async function routeInference(request: LLMRequest): Promise<LLMResponse> 
 
 export async function getActiveProvider(): Promise<ModelProvider> {
   return new Promise((resolve) => {
-    chrome.storage.local.get('activeProvider', (r) => resolve((r.activeProvider as ModelProvider) || 'webgpu'));
+    chrome.storage.local.get('activeProvider', (r: { activeProvider?: ModelProvider }) => resolve(r.activeProvider || 'webgpu'));
   });
 }
 

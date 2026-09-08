@@ -1,0 +1,107 @@
+{
+  "runId": "corpus-37",
+  "tabId": 1,
+  "epoch": 1,
+  "url": "http://localhost:3000/",
+  "origin": "http://localhost:3000",
+  "title": "Edit profile 2",
+  "settled": true,
+  "settleWaitedMs": 0,
+  "settleCalibration": "visible",
+  "epochSuspect": false,
+  "elements": [
+    {
+      "handle": "e0",
+      "role": "heading",
+      "name": "Edit profile",
+      "nameSource": "content",
+      "tag": "h1",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 0
+    },
+    {
+      "handle": "e1",
+      "role": "form",
+      "name": "Profile",
+      "nameSource": "label",
+      "tag": "form",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 1
+    },
+    {
+      "handle": "e2",
+      "role": "textbox",
+      "name": "Full name",
+      "nameSource": "native",
+      "tag": "input",
+      "inputType": "text",
+      "valueShape": "Mohd Taha",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 2
+    },
+    {
+      "handle": "e3",
+      "role": "textbox",
+      "name": "Bio",
+      "nameSource": "native",
+      "tag": "input",
+      "inputType": "text",
+      "valueShape": "empty",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 3
+    },
+    {
+      "handle": "e4",
+      "role": "button",
+      "name": "Save",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "form:0",
+      "ordinal": 4
+    }
+  ],
+  "excludedCount": 0,
+  "regions": [
+    {
+      "regionId": "form:0",
+      "label": "Profile",
+      "complete": true,
+      "shown": 4,
+      "total": 4
+    },
+    {
+      "regionId": "region:root",
+      "label": "Page",
+      "complete": true,
+      "shown": 1,
+      "total": 1
+    }
+  ],
+  "unreachableRegions": [],
+  "buildMs": 1
+}

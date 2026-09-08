@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-09-08T08:40:33.072Z",
+  "sourceUrl": "https://the-internet.herokuapp.com/login",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "notes": "real login form — sensitive-field exclusion on a real page",
+  "ppSchemaVersion": 1
+}

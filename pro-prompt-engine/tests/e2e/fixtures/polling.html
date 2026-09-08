@@ -1,0 +1,20 @@
+<!doctype html>
+<!--
+  Phase 2 §6.3 — a page that polls faster than the quiet window and never
+  settles: a clock that mutates a text node every 200ms, forever. Used by a
+  future e2e settle spec and by tools/bakeoff.ts's corpus to exercise
+  `settled: false` honestly rather than only under synthetic streams.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Polling clock fixture</title></head>
+<body>
+  <h1>Live dashboard</h1>
+  <p id="clock">--:--:--</p>
+  <button id="refresh">Refresh now</button>
+  <script>
+    setInterval(() => {
+      document.getElementById('clock').textContent = new Date().toISOString();
+    }, 200);
+  </script>
+</body>
+</html>

@@ -12,26 +12,43 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "build:e2e": "PP_E2E=1 wxt build",
+    "test:e2e": "npm run build:e2e && playwright test",
+    "build:corpus": "PP_CORPUS=1 wxt build",
+    "collect:corpus": "npm run build:corpus && npx tsx tools/collect-real-fixtures.ts",
+    "ci": "npm run compile && npm run test:unit && npm run build && npm run test:e2e",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "@mlc-ai/web-llm": "^0.2.78",
+    "@mozilla/readability": "^0.5.0",
     "dexie": "^4.4.2",
     "dexie-react-hooks": "^4.4.0",
     "gpt-tokenizer": "^2.8.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "recharts": "^2.15.3",
-    "@mozilla/readability": "^0.5.0",
-    "@mlc-ai/web-llm": "^0.2.78"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/chrome": "^0.2.7",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^2.1.9",
+    "@webgpu/types": "^0.1.72",
     "@wxt-dev/module-react": "^1.1.5",
-    "typescript": "^5.9.3",
-    "wxt": "^0.20.25",
-    "tailwindcss": "^3.4.19",
+    "autoprefixer": "^10.5.0",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.12.0",
+    "http-server": "^14.1.1",
     "postcss": "^8.5.10",
-    "autoprefixer": "^10.5.0"
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9",
+    "wxt": "^0.20.25"
   }
 }

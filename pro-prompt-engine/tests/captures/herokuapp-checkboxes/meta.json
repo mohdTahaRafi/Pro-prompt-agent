@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-09-08T08:40:42.148Z",
+  "sourceUrl": "https://the-internet.herokuapp.com/checkboxes",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "notes": "toggle controls, minimal DOM",
+  "ppSchemaVersion": 1
+}

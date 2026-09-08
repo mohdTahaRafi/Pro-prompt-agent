@@ -1,0 +1,98 @@
+{
+  "runId": "corpus-herokuapp-add-remove-1788857646820",
+  "tabId": 87376305,
+  "epoch": 1,
+  "url": "https://the-internet.herokuapp.com/add_remove_elements/",
+  "origin": "https://the-internet.herokuapp.com",
+  "title": "The Internet",
+  "settled": true,
+  "settleWaitedMs": 402,
+  "settleCalibration": "visible",
+  "epochSuspect": false,
+  "elements": [
+    {
+      "handle": "e0",
+      "role": "img",
+      "name": "Fork me on GitHub",
+      "nameSource": "native",
+      "tag": "img",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 0
+    },
+    {
+      "handle": "e1",
+      "role": "button",
+      "name": "Add Element",
+      "nameSource": "content",
+      "tag": "button",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 1
+    },
+    {
+      "handle": "e2",
+      "role": "link",
+      "name": "Elemental Selenium",
+      "nameSource": "content",
+      "tag": "a",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": true,
+      "href": "http://elementalselenium.com/",
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 2
+    },
+    {
+      "handle": "e3",
+      "role": "heading",
+      "name": "Add/Remove Elements",
+      "nameSource": "content",
+      "tag": "h3",
+      "enabled": true,
+      "visible": true,
+      "inViewport": true,
+      "actionable": false,
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 3
+    },
+    {
+      "handle": "e4",
+      "role": "link",
+      "name": "",
+      "nameSource": "none",
+      "tag": "a",
+      "enabled": true,
+      "visible": false,
+      "inViewport": false,
+      "actionable": true,
+      "href": "https://github.com/tourdedave/the-internet",
+      "sensitiveKind": null,
+      "regionId": "region:root",
+      "ordinal": 4
+    }
+  ],
+  "excludedCount": 0,
+  "regions": [
+    {
+      "regionId": "region:root",
+      "label": "Page",
+      "complete": true,
+      "shown": 5,
+      "total": 5
+    }
+  ],
+  "unreachableRegions": [],
+  "buildMs": 408
+}

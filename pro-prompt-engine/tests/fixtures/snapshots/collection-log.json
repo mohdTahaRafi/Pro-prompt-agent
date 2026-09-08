@@ -1,0 +1,212 @@
+[
+  {
+    "id": "dol-whd-complaint",
+    "source": "frozen-capture",
+    "url": "https://www.dol.gov/agencies/whd/contact/complaints",
+    "ok": true,
+    "elementCount": 91
+  },
+  {
+    "id": "govuk-home",
+    "source": "frozen-capture",
+    "url": "https://www.gov.uk",
+    "ok": true,
+    "elementCount": 86
+  },
+  {
+    "id": "wikipedia-browser-article",
+    "source": "frozen-capture",
+    "url": "https://en.wikipedia.org/wiki/Web_browser",
+    "ok": true,
+    "elementCount": 95
+  },
+  {
+    "id": "mdn-array-docs",
+    "source": "frozen-capture",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+    "ok": true,
+    "elementCount": 82
+  },
+  {
+    "id": "hn-front",
+    "source": "frozen-capture",
+    "url": "https://news.ycombinator.com",
+    "ok": true,
+    "elementCount": 90
+  },
+  {
+    "id": "herokuapp-login",
+    "source": "frozen-capture",
+    "url": "https://the-internet.herokuapp.com/login",
+    "ok": true,
+    "elementCount": 10
+  },
+  {
+    "id": "herokuapp-checkboxes",
+    "source": "frozen-capture",
+    "url": "https://the-internet.herokuapp.com/checkboxes",
+    "ok": true,
+    "elementCount": 7
+  },
+  {
+    "id": "herokuapp-dropdown",
+    "source": "frozen-capture",
+    "url": "https://the-internet.herokuapp.com/dropdown",
+    "ok": true,
+    "elementCount": 8
+  },
+  {
+    "id": "herokuapp-upload",
+    "source": "frozen-capture",
+    "url": "https://the-internet.herokuapp.com/upload",
+    "ok": true,
+    "elementCount": 8
+  },
+  {
+    "id": "herokuapp-tables",
+    "source": "frozen-capture",
+    "url": "https://the-internet.herokuapp.com/tables",
+    "ok": true,
+    "elementCount": 36
+  },
+  {
+    "id": "github-repo",
+    "source": "frozen-capture",
+    "url": "https://github.com/microsoft/playwright",
+    "ok": true,
+    "elementCount": 95
+  },
+  {
+    "id": "python-docs-tutorial",
+    "source": "frozen-capture",
+    "url": "https://docs.python.org/3/tutorial/index.html",
+    "ok": true,
+    "elementCount": 83
+  },
+  {
+    "id": "wikipedia-population-table",
+    "source": "frozen-capture",
+    "url": "https://en.wikipedia.org/wiki/List_of_countries_by_population_(United_Nations)",
+    "ok": true,
+    "elementCount": 94
+  },
+  {
+    "id": "httpbin-form",
+    "source": "frozen-capture",
+    "url": "https://httpbin.org/forms/post",
+    "ok": true,
+    "elementCount": 14
+  },
+  {
+    "id": "wikipedia-login",
+    "source": "frozen-capture",
+    "url": "https://en.wikipedia.org/wiki/Special:UserLogin",
+    "ok": true,
+    "elementCount": 90
+  },
+  {
+    "id": "wikipedia-machine-learning",
+    "source": "live-panel",
+    "url": "https://en.wikipedia.org/wiki/Machine_learning",
+    "ok": true,
+    "elementCount": 97
+  },
+  {
+    "id": "mdn-css-flexbox",
+    "source": "live-panel",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_flexible_box_layout/Basic_concepts_of_flexbox",
+    "ok": true,
+    "elementCount": 92
+  },
+  {
+    "id": "herokuapp-add-remove",
+    "source": "live-panel",
+    "url": "https://the-internet.herokuapp.com/add_remove_elements/",
+    "ok": true,
+    "elementCount": 5
+  },
+  {
+    "id": "herokuapp-inputs",
+    "source": "live-panel",
+    "url": "https://the-internet.herokuapp.com/inputs",
+    "ok": true,
+    "elementCount": 5
+  },
+  {
+    "id": "herokuapp-dynamic-content",
+    "source": "live-panel",
+    "url": "https://the-internet.herokuapp.com/dynamic_content",
+    "ok": true,
+    "elementCount": 5
+  },
+  {
+    "id": "herokuapp-shadowdom",
+    "source": "live-panel",
+    "url": "https://the-internet.herokuapp.com/shadowdom",
+    "ok": true,
+    "elementCount": 4
+  },
+  {
+    "id": "herokuapp-jqueryui-menu",
+    "source": "live-panel",
+    "url": "https://the-internet.herokuapp.com/jqueryui/menu",
+    "ok": true,
+    "elementCount": 10
+  },
+  {
+    "id": "github-issues-list",
+    "source": "live-panel",
+    "url": "https://github.com/microsoft/playwright/issues",
+    "ok": true,
+    "elementCount": 99
+  },
+  {
+    "id": "python-docs-glossary",
+    "source": "live-panel",
+    "url": "https://docs.python.org/3/glossary.html",
+    "ok": true,
+    "elementCount": 95
+  },
+  {
+    "id": "hn-newest",
+    "source": "live-panel",
+    "url": "https://news.ycombinator.com/newest",
+    "ok": true,
+    "elementCount": 86
+  },
+  {
+    "id": "herokuapp-forgot-password",
+    "source": "live-panel",
+    "url": "https://the-internet.herokuapp.com/forgot_password",
+    "ok": true,
+    "elementCount": 10
+  },
+  {
+    "id": "httpbin-home",
+    "source": "live-panel",
+    "url": "https://httpbin.org/",
+    "ok": true,
+    "elementCount": 108
+  },
+  {
+    "id": "python-org-home",
+    "source": "live-panel",
+    "url": "https://www.python.org",
+    "ok": true,
+    "elementCount": 89
+  },
+  {
+    "id": "govuk-browse-benefits",
+    "source": "live-panel",
+    "url": "https://www.gov.uk/browse/benefits",
+    "ok": true,
+    "elementCount": 88
+  },
+  {
+    "id": "herokuapp-iframe-editor",
+    "source": "live-panel",
+    "url": "https://the-internet.herokuapp.com/iframe",
+    "ok": true,
+    "elementCount": 27
+  }
+]

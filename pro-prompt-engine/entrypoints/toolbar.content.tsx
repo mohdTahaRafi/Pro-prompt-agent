@@ -7,7 +7,36 @@
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import ReactDOM from 'react-dom/client';
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { Readability } from '@mozilla/readability';
 import type { Profile } from '@lib/types/profile.types';
+
+/**
+ * [Phase 1] Extracts page content in-place instead of round-tripping through
+ * background.ts → chrome.tabs.sendMessage → a content script (the old path,
+ * which relied on entrypoints/content.ts's SCAN_WEBPAGE listener — deleted
+ * this phase along with the rest of the <all_urls> content script). This
+ * component already runs inside the page with the DOM available, so the
+ * extraction runs locally with no message hop and no dependency on the
+ * `tabs` permission the extension does not hold.
+ */
+function extractPageContent(): string {
+  try {
+    const clone = document.cloneNode(true) as Document;
+    const reader = new Readability(clone);
+    const article = reader.parse();
+    if (article && article.textContent) {
+      return article.textContent.replace(/\s+/g, ' ').trim().slice(0, 15000);
+    }
+  } catch (err) {
+    console.warn('[Pro Prompt] Readability failed, falling back to basic extraction', err);
+  }
+
+  const bodyClone = document.body.cloneNode(true) as HTMLElement;
+  ['script', 'style', 'nav', 'header', 'footer', 'noscript', '[aria-hidden="true"]']
+    .forEach(sel => bodyClone.querySelectorAll(sel).forEach(el => el.remove()));
+  bodyClone.querySelectorAll('#pro-prompt-toolbar-host').forEach(el => el.remove());
+  return (bodyClone.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 15000);
+}
 
 const TARGET_SITES = ['chat.openai.com', 'chatgpt.com', 'claude.ai', 'gemini.google.com', 'aistudio.google.com', 'perplexity.ai'];
 
@@ -49,17 +78,15 @@ function ToolbarApp() {
   const [notification, setNotification] = useState('');
   const [activeModal, setActiveModal] = useState<'generate' | 'snippet' | 'context' | 'scan' | 'select-context' | null>(null);
   const [selectedText, setSelectedText] = useState('');
-  const [autocompleteOn, setAutocompleteOn] = useState(true);
   const dragging = useRef(false);
   const offset = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    chrome.storage.local.get(['toolbarPosition', 'autocompleteEnabled'], (r) => {
+    chrome.storage.local.get(['toolbarPosition'], (r: { toolbarPosition?: { x: number; y: number; collapsed?: boolean } }) => {
       if (r.toolbarPosition) {
         setPos({ x: r.toolbarPosition.x, y: r.toolbarPosition.y });
         setCollapsed(r.toolbarPosition.collapsed || false);
       }
-      if (r.autocompleteEnabled !== undefined) setAutocompleteOn(r.autocompleteEnabled);
     });
 
     const msgListener = (msg: any) => {
@@ -159,15 +186,9 @@ function ToolbarApp() {
     setActiveModal('scan');
   };
 
-  const toggleAutocomplete = () => {
-    const next = !autocompleteOn;
-    setAutocompleteOn(next);
-    chrome.storage.local.set({ autocompleteEnabled: next });
-    chrome.runtime.sendMessage({ type: 'TOGGLE_AUTOCOMPLETE', payload: { enabled: next } });
-    notify(next ? '✅ Autocomplete ON' : '⭕ Autocomplete OFF');
-  };
-
   // Expanded action list
+  // [Phase 1 §5.1] Autocomplete toggle removed — the ghost-text suggestion
+  // manager is out of the build until Phase 4.
   const actions = [
     { icon: '🔄', label: 'Refactor Input', fn: handleRefactor },
     { icon: '📊', label: 'Score Input', fn: handleScore },
@@ -175,7 +196,6 @@ function ToolbarApp() {
     { icon: '📥', label: 'Manual Context', fn: () => setActiveModal('context') },
     { icon: '🔍', label: 'Scan Page', fn: handleScanPage },
     { icon: '📌', label: 'Add Snippet', fn: () => setActiveModal('snippet') },
-    { icon: autocompleteOn ? '🤖' : '⭕', label: `Autocomplete: ${autocompleteOn ? 'ON' : 'OFF'}`, fn: toggleAutocomplete },
     { icon: '⚙️', label: 'Dashboard', fn: () => chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' }) },
   ];
 
@@ -275,11 +295,14 @@ function ModalManager({
       }
     }).catch(() => {});
 
-    // If scan modal, extract page content
+    // If scan modal, extract page content locally (see extractPageContent above)
     if (type === 'scan') {
-      chrome.runtime.sendMessage({ type: 'SCAN_WEBPAGE' }).then((r: any) => {
-        if (r?.status === 'success') setScanContent(r.data?.content?.slice(0, 3000) || 'Could not extract content.');
-      }).catch(() => setScanContent('Could not scan page.'));
+      try {
+        const content = extractPageContent();
+        setScanContent(content.slice(0, 3000) || 'Could not extract content.');
+      } catch {
+        setScanContent('Could not scan page.');
+      }
     }
   }, [type]);
 
@@ -335,8 +358,8 @@ function ModalManager({
     'select-context': '✍️ Selection → Context',
   };
 
-  const S: Record<string, React.CSSProperties> = {
-    overlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', zIndex: 9999999, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  const S = {
+    overlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', zIndex: 9999999, display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
     box: { width: 440, maxHeight: '85vh', overflowY: 'auto' as const, background: '#0F172A', border: '1px solid #334155', borderRadius: 12, padding: 24, fontFamily: "'Inter', sans-serif", color: '#F8FAFC', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)' },
     label: { display: 'block', fontSize: 12, color: '#94A3B8', marginBottom: 4, marginTop: 12 },
     input: { width: '100%', padding: '9px 12px', background: '#1E293B', border: '1px solid #334155', borderRadius: 8, color: 'white', boxSizing: 'border-box' as const, fontFamily: 'inherit', fontSize: 13 },

@@ -15,7 +15,7 @@ let currentState: ModelState = 'cold';
 let currentModel: WebGPUModel | null = null;
 
 // Initialize on load to restore state across SW restarts
-chrome.storage.local.get(['webGpuActiveModel'], (res) => {
+chrome.storage.local.get(['webGpuActiveModel'], (res: { webGpuActiveModel?: WebGPUModel }) => {
   if (res.webGpuActiveModel) {
     currentModel = res.webGpuActiveModel;
     currentState = 'cold'; // Will be verified on demand

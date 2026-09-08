@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import type { Profile } from '@lib/types/profile.types';
 import type { Snippet } from '@lib/types/snippet.types';
+import { WEBGPU_MODELS } from '@lib/types/llm.types';
 import { prebuiltAppConfig } from '@mlc-ai/web-llm';
 
 function send<T = any>(type: string, payload?: unknown): Promise<T> {
@@ -17,7 +18,7 @@ function send<T = any>(type: string, payload?: unknown): Promise<T> {
   });
 }
 
-type View = 'profiles' | 'snippets' | 'library' | 'analytics' | 'context' | 'settings';
+type View = 'profiles' | 'snippets' | 'library' | 'analytics' | 'context' | 'perception' | 'settings';
 
 const NAV: { key: View; label: string; icon: string }[] = [
   { key: 'profiles', label: 'Profiles', icon: '👤' },
@@ -25,6 +26,9 @@ const NAV: { key: View; label: string; icon: string }[] = [
   { key: 'library', label: 'Prompt Library', icon: '📚' },
   { key: 'analytics', label: 'Analytics', icon: '📊' },
   { key: 'context', label: 'Context Lab', icon: '🧪' },
+  // [Phase 2 §9] the demonstrable artifact of this phase — not the side
+  // panel, which does not exist until Phase 5.
+  { key: 'perception', label: 'Perception', icon: '👁️' },
   { key: 'settings', label: 'Models & Settings', icon: '🧠' },
 ];
 
@@ -60,6 +64,7 @@ export default function App() {
         {view === 'library' && <LibraryView />}
         {view === 'analytics' && <AnalyticsView />}
         {view === 'context' && <ContextLabView />}
+        {view === 'perception' && <PerceptionView />}
         {view === 'settings' && <SettingsView />}
       </div></main>
     </div>
@@ -76,7 +81,7 @@ function ProfilesView() {
   const activate = async (p: Profile) => {
     if (!p.id) return;
     await send('SET_ACTIVE_PROFILE', { id: p.id });
-    setProfiles(prev => prev.map(x => ({ ...x, isActive: x.id === p.id })));
+    setProfiles(prev => prev.map(x => ({ ...x, isActive: x.id === p.id ? 1 : 0 })));
   };
 
   return (
@@ -85,7 +90,7 @@ function ProfilesView() {
         <div><h2 className="text-h1 font-bold">Profiles</h2><p className="text-body text-text-secondary mt-1">Manage your prompt engineering personas (4-file system).</p></div>
         <button onClick={() => {
             const newProfile: Profile = {
-              name: 'New Profile', description: 'Describe your persona here.', icon: '🧑‍💻', isActive: false, isCustom: true,
+              name: 'New Profile', description: 'Describe your persona here.', icon: '🧑‍💻', isActive: 0, isCustom: true,
               contextMd: '', promptGuidelinesMd: '', profileDescriptionMd: '', scoringGuidelinesMd: '',
               agentWeights: { refactor: 1, scorer: 1, generator: 1, comprehension: 1 }, createdAt: Date.now(), updatedAt: Date.now()
             };
@@ -398,6 +403,7 @@ function ContextLabView() {
 // ═══ Settings ═══
 function SettingsView() {
   const [groqKey, setGroqKey] = useState('');
+  const [groqModel, setGroqModel] = useState('llama-3.3-70b-versatile');
   const [masked, setMasked] = useState(true);
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
   const [activeProvider, setActiveProvider] = useState('webgpu');
@@ -406,14 +412,29 @@ function SettingsView() {
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
   const [downloadedModels, setDownloadedModels] = useState<string[]>([]);
   const [webGpuActiveModel, setWebGpuActiveModel] = useState<string | null>(null);
+  const [migrationNotice, setMigrationNotice] = useState(false);
 
   useEffect(() => {
-    chrome.storage.sync.get('groqApiKey', r => { if (r.groqApiKey) setGroqKey(r.groqApiKey); });
-    chrome.storage.local.get(['ollamaBaseUrl', 'activeProvider', 'downloadedModels'], r => {
-      if (r.ollamaBaseUrl) setOllamaUrl(r.ollamaBaseUrl);
-      if (r.activeProvider) setActiveProvider(r.activeProvider);
-      if (r.downloadedModels) setDownloadedModels(r.downloadedModels);
-    });
+    // [Phase 1 PRE-5] the key now lives in storage.local only. groq-adapter.ts
+    // performs the one-time migration out of storage.sync on first read; here
+    // we just read local and show the one-time notice if it fired.
+    chrome.storage.local.get(
+      ['groqApiKey', 'groqModel', 'keyMigrationNotice', 'keyMigrationNoticeShown'],
+      (r: { groqApiKey?: string; groqModel?: string; keyMigrationNotice?: number; keyMigrationNoticeShown?: boolean }) => {
+        if (r.groqApiKey) setGroqKey(r.groqApiKey);
+        if (r.groqModel) setGroqModel(r.groqModel);
+        if (r.keyMigrationNotice && !r.keyMigrationNoticeShown) {
+          setMigrationNotice(true);
+          chrome.storage.local.set({ keyMigrationNoticeShown: true });
+        }
+      });
+    chrome.storage.local.get(
+      ['ollamaBaseUrl', 'activeProvider', 'downloadedModels'],
+      (r: { ollamaBaseUrl?: string; activeProvider?: string; downloadedModels?: string[] }) => {
+        if (r.ollamaBaseUrl) setOllamaUrl(r.ollamaBaseUrl);
+        if (r.activeProvider) setActiveProvider(r.activeProvider);
+        if (r.downloadedModels) setDownloadedModels(r.downloadedModels);
+      });
 
     // Use WEBGPU_GET_STATE routed through SW (not direct offscreen bypass)
     send('WEBGPU_GET_STATE').then((data: any) => {
@@ -458,6 +479,13 @@ function SettingsView() {
     <div>
       <h2 className="text-h1 font-bold mb-6">Models &amp; Settings</h2>
 
+      {migrationNotice && (
+        <div className="card p-4 mb-4 border border-accent-yellow/40 bg-accent-yellow-bg text-small text-text-primary flex items-start justify-between gap-4">
+          <p>Your API key was moved to this device only. It was previously synced to every browser signed into your Google account. If you used Pro Prompt on another machine, you will need to re-enter it there.</p>
+          <button onClick={() => setMigrationNotice(false)} className="btn-icon w-6 h-6 shrink-0">✕</button>
+        </div>
+      )}
+
       {/* Provider Selection */}
       <div className="card p-6 mb-4">
         <h3 className="text-h2 font-semibold mb-4">Active Model Provider</h3>
@@ -483,13 +511,21 @@ function SettingsView() {
       {/* Groq Key */}
       <div className="card p-6 mb-4">
         <h3 className="text-h2 font-semibold mb-3">Groq API Key</h3>
-        <p className="text-small text-text-muted mb-3">From <a href="https://console.groq.com" target="_blank" className="text-primary hover:underline">console.groq.com</a></p>
-        <div className="flex gap-2">
+        <p className="text-small text-text-muted mb-3">From <a href="https://console.groq.com" target="_blank" className="text-primary hover:underline">console.groq.com</a>. Stored on this device only — it is never synced to your Google account.</p>
+        <div className="flex gap-2 mb-3">
           <div className="flex-1 relative">
             <input type={masked ? 'password' : 'text'} value={groqKey} onChange={e => setGroqKey(e.target.value)} placeholder="gsk_..." className="input-field pr-10" />
             <button onClick={() => setMasked(!masked)} className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-none">{masked ? '👁️' : '🙈'}</button>
           </div>
-          <button onClick={() => { chrome.storage.sync.set({ groqApiKey: groqKey }); flash('✅ API key saved!'); }} className="btn-primary px-4 py-2 shrink-0">Save</button>
+          <button onClick={() => { chrome.storage.local.set({ groqApiKey: groqKey }); flash('✅ API key saved to this device!'); }} className="btn-primary px-4 py-2 shrink-0">Save</button>
+        </div>
+        {/* Editable model id: a hard-coded provider model goes stale when Groq
+            decommissions it, and a user should not need an extension update
+            to point at the replacement. */}
+        <label className="text-small text-text-muted block mb-1">Model</label>
+        <div className="flex gap-2">
+          <input type="text" value={groqModel} onChange={e => setGroqModel(e.target.value)} placeholder="llama-3.3-70b-versatile" className="input-field flex-1" />
+          <button onClick={() => { chrome.storage.local.set({ groqModel }); flash('✅ Model saved!'); }} className="btn-primary px-4 py-2 shrink-0">Save</button>
         </div>
       </div>
 
@@ -507,14 +543,7 @@ function SettingsView() {
         <h3 className="text-h2 font-semibold mb-1">Offline Models (WebGPU)</h3>
         <p className="text-small text-text-muted mb-4">Browser-compatible models. Recommended: Qwen2.5-0.5B or Phi-3-mini for best performance.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {prebuiltAppConfig.model_list.filter(m => [
-            'Qwen2.5-0.5B-Instruct-q4f16_1-MLC',
-            'Qwen2.5-1.5B-Instruct-q4f32_1-MLC',
-            'gemma-2-2b-it-q4f32_1-MLC',
-            'Phi-3-mini-4k-instruct-q4f16_1-MLC',
-            'TinyLlama-1.1B-Chat-v1.0-q4f32_1-MLC',
-            'stablelm-2-zephyr-1_6b-q4f16_1-MLC',
-          ].includes(m.model_id)).map((model) => (
+          {prebuiltAppConfig.model_list.filter(m => (WEBGPU_MODELS as readonly string[]).includes(m.model_id)).map((model) => (
             <div key={model.model_id} className="border border-border-default bg-background p-4 rounded-xl flex flex-col">
               <h4 className="text-body font-semibold mb-1" style={{ wordBreak: 'break-all' }}>{model.model_id}</h4>
               <span className="text-small text-text-muted block mb-3">VRAM: {model.vram_required_MB ? (model.vram_required_MB / 1024).toFixed(1) + ' GB' : 'Unknown'}</span>
@@ -542,6 +571,248 @@ function SettingsView() {
       </div>
 
       {status && <div className="text-body text-center animate-fade-in py-2">{status}</div>}
+    </div>
+  );
+}
+
+// ═══ Perception (Phase 2 §9) ═══
+//
+// The demonstrable artifact of the phase: a granted-origin dropdown, four
+// perception-verb buttons, and a rendering of whatever comes back — a
+// descriptor table, region completeness bars, the settle line, the
+// exclusion count, and raw JSON with a "Save as fixture" download for the
+// bake-off corpus (§10.1). Lives in the options page, not the side panel,
+// which does not exist until Phase 5.
+function PerceptionView() {
+  const [origins, setOrigins] = useState<string[]>([]);
+  const [origin, setOrigin] = useState<string>('');
+  const [tabId, setTabId] = useState<number | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
+  const [snapshot, setSnapshot] = useState<any>(null);
+  const [settleResult, setSettleResult] = useState<any>(null);
+  const [pageResult, setPageResult] = useState<any>(null);
+  const [selectedHandle, setSelectedHandle] = useState<string>('');
+  const [elementResult, setElementResult] = useState<any>(null);
+
+  useEffect(() => {
+    send<string[]>('GET_ACTIVE_GRANTS').then((list) => {
+      setOrigins(list || []);
+      if (list?.[0]) setOrigin(list[0]);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!origin) { setTabId(null); return; }
+    chrome.tabs.query({ url: `${origin}/*` }, (tabs) => {
+      setTabId(tabs[0]?.id ?? null);
+    });
+  }, [origin]);
+
+  async function perceive(type: string, payload: Record<string, unknown> = {}) {
+    if (!tabId) { setError('No open tab found for this granted origin — open it in a tab first.'); return; }
+    setBusy(type);
+    setError('');
+    try {
+      const runId = `debug-${Date.now()}`;
+      const resp: any = await chrome.tabs.sendMessage(tabId, { type, runId, ...payload });
+      if (resp?.status === 'error') throw new Error(resp.message ?? 'Unknown error');
+      if (type === 'PERCEIVE_STRUCTURE') setSnapshot(resp?.data ?? null);
+      else if (type === 'WAIT_FOR_SETTLE') setSettleResult(resp?.data ?? null);
+      else if (type === 'PERCEIVE_PAGE') setPageResult(resp?.data ?? null);
+      else if (type === 'PERCEIVE_ELEMENT') setElementResult(resp?.data ?? null);
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    }
+    setBusy(null);
+  }
+
+  function saveAsFixture() {
+    if (!snapshot) return;
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeOrigin = origin.replace(/^https?:\/\//, '').replace(/[^a-z0-9.-]/gi, '_');
+    a.href = url;
+    a.download = `${safeOrigin}-${snapshot.epoch}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    // Downloads to the browser's default Downloads folder — move the file
+    // into tests/fixtures/snapshots/ and add its entry to corpus.json (§10.1).
+  }
+
+  function copyJson() {
+    navigator.clipboard.writeText(JSON.stringify(snapshot ?? pageResult ?? settleResult, null, 2)).catch(() => {});
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="text-h1 font-bold">Perception</h2>
+        <p className="text-body text-text-secondary mt-1">
+          Look at a granted page and describe it the way a model reasons about it. Reads only —
+          nothing here can click, type, or navigate.
+        </p>
+      </div>
+
+      <div className="card p-5 mb-4 flex items-center gap-3 flex-wrap">
+        <label className="text-small text-text-muted">Granted origin</label>
+        <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="input-field">
+          {origins.length === 0 && <option value="">No granted origins</option>}
+          {origins.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <span className="text-xs text-text-muted">
+          {tabId ? `tab ${tabId}` : origin ? 'no open tab for this origin' : ''}
+        </span>
+
+        <div className="flex-1" />
+
+        <button onClick={() => perceive('PERCEIVE_STRUCTURE', { tokenBudget: 6000 })}
+          disabled={!tabId || busy !== null}
+          className="btn-primary px-4 py-2 disabled:opacity-50">
+          {busy === 'PERCEIVE_STRUCTURE' ? '⏳' : '🔎'} Read structure
+        </button>
+        <button onClick={() => perceive('WAIT_FOR_SETTLE')}
+          disabled={!tabId || busy !== null}
+          className="btn-secondary px-4 py-2 border border-border-default disabled:opacity-50">
+          {busy === 'WAIT_FOR_SETTLE' ? '⏳' : '⏱️'} Wait for settle
+        </button>
+        <button onClick={() => perceive('PERCEIVE_PAGE')}
+          disabled={!tabId || busy !== null}
+          className="btn-secondary px-4 py-2 border border-border-default disabled:opacity-50">
+          {busy === 'PERCEIVE_PAGE' ? '⏳' : '📄'} Read page
+        </button>
+        <div className="flex items-center gap-1">
+          <input value={selectedHandle} onChange={(e) => setSelectedHandle(e.target.value)}
+            placeholder="e12" className="input-field w-20 text-center" />
+          <button onClick={() => perceive('PERCEIVE_ELEMENT', { handle: selectedHandle })}
+            disabled={!tabId || !selectedHandle || busy !== null}
+            className="btn-secondary px-3 py-2 border border-border-default disabled:opacity-50">
+            {busy === 'PERCEIVE_ELEMENT' ? '⏳' : '🎯'} Read element
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="card p-3 mb-4 border border-accent-red/40 text-accent-red text-small">{error}</div>}
+
+      {snapshot && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <StatTile label="Settled" value={snapshot.settled ? `after ${snapshot.settleWaitedMs} ms` : `NOT settled (${snapshot.settleWaitedMs} ms)`} />
+            <StatTile label="Calibration" value={snapshot.settleCalibration} />
+            <StatTile label="Epoch" value={String(snapshot.epoch)} />
+            <StatTile label="Excluded (sensitive)" value={String(snapshot.excludedCount)} />
+            <StatTile label="Elements shown" value={String(snapshot.elements.length)} />
+            <StatTile label="Build time" value={`${snapshot.buildMs} ms`} />
+            <StatTile label="Epoch suspect" value={snapshot.epochSuspect ? 'yes' : 'no'} />
+            <StatTile label="Over budget" value={snapshot.overBudget ? `by ${snapshot.overBudget.by}` : 'no'} />
+          </div>
+
+          {snapshot.unreachableRegions.length > 0 && (
+            <div className="card p-4 mb-4">
+              <h3 className="text-body font-semibold mb-2">Unreachable regions</h3>
+              <ul className="text-small text-text-secondary list-disc pl-5">
+                {snapshot.unreachableRegions.map((r: string) => <li key={r}>{r}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div className="card p-4 mb-4">
+            <h3 className="text-body font-semibold mb-3">Region completeness</h3>
+            <div className="space-y-2">
+              {snapshot.regions.map((r: any) => (
+                <div key={r.regionId}>
+                  <div className="flex items-center justify-between text-small mb-1">
+                    <span>{r.label} <span className="text-text-muted">({r.regionId})</span></span>
+                    <span className={r.complete ? 'text-accent-green' : 'text-accent-yellow'}>
+                      {r.complete ? 'complete' : 'pruned'}, {r.shown} of {r.total}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-surface rounded overflow-hidden">
+                    <div className="h-full bg-primary" style={{ width: `${r.total ? (r.shown / r.total) * 100 : 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card p-4 mb-4 overflow-x-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-body font-semibold">Descriptors ({snapshot.elements.length})</h3>
+              <div className="flex gap-2">
+                <button onClick={copyJson} className="btn-secondary px-3 py-1 text-xs border border-border-default">Copy JSON</button>
+                <button onClick={saveAsFixture} className="btn-primary px-3 py-1 text-xs">Save as fixture</button>
+              </div>
+            </div>
+            <table className="w-full text-small">
+              <thead>
+                <tr className="text-left text-text-muted border-b border-border-default">
+                  <th className="py-1 pr-3">Handle</th>
+                  <th className="py-1 pr-3">Role</th>
+                  <th className="py-1 pr-3">Name</th>
+                  <th className="py-1 pr-3">Region</th>
+                  <th className="py-1 pr-3">Visible</th>
+                  <th className="py-1 pr-3">Actionable</th>
+                  <th className="py-1 pr-3">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshot.elements.map((el: any) => (
+                  <tr key={el.handle} className="border-b border-border-default/50 hover:bg-surface-hover cursor-pointer"
+                    onClick={() => setSelectedHandle(el.handle)}>
+                    <td className="py-1 pr-3 font-mono">{el.handle}</td>
+                    <td className="py-1 pr-3">{el.role}</td>
+                    <td className="py-1 pr-3">"{el.name}"{!el.name && <span className="text-text-muted"> (unnamed)</span>}</td>
+                    <td className="py-1 pr-3 text-text-muted">{el.regionId}</td>
+                    <td className="py-1 pr-3">{el.visible ? (el.inViewport ? '✓ in view' : '✓ off-screen') : '✗ hidden'}</td>
+                    <td className="py-1 pr-3">{el.actionable ? '✓' : '—'}</td>
+                    <td className="py-1 pr-3 text-text-muted">{el.valueShape ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {settleResult && !snapshot && (
+        <div className="card p-4 mb-4">
+          <h3 className="text-body font-semibold mb-2">Settle result</h3>
+          <p className="text-small">
+            {settleResult.settled ? 'Settled' : 'Did NOT settle'} after {settleResult.waitedMs} ms
+            ({settleResult.calibration} calibration) — {settleResult.mutations} mutations,
+            {' '}{settleResult.resourceEntries} resources{settleResult.suspect ? ', epoch marked SUSPECT' : ''}.
+          </p>
+        </div>
+      )}
+
+      {pageResult && (
+        <div className="card p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-body font-semibold">Read page (class {pageResult.class})</h3>
+            <span className="text-xs text-text-muted">{pageResult.text.length} chars</span>
+          </div>
+          <p className="text-small text-text-secondary whitespace-pre-wrap max-h-64 overflow-y-auto">{pageResult.text}</p>
+        </div>
+      )}
+
+      {elementResult && (
+        <div className="card p-4 mb-4">
+          <h3 className="text-body font-semibold mb-2">Read element</h3>
+          <pre className="text-xs bg-background p-3 rounded-lg overflow-x-auto">{JSON.stringify(elementResult, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="card p-3">
+      <div className="text-xs text-text-muted uppercase tracking-wide mb-1">{label}</div>
+      <div className="text-body font-semibold">{value}</div>
     </div>
   );
 }

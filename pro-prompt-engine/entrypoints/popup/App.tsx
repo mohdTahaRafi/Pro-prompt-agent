@@ -1,8 +1,15 @@
 /**
  * Popup App — "Remote Control" for the active browser tab.
+ *
+ * [Phase 1] Ghost Autocomplete toggle removed (§5.1 — the ghost-text
+ * suggestion manager is out of the build). Added: the per-origin
+ * grant/revoke flow (§4) — this is the only screen a
+ * chrome.permissions.request() user-gesture can originate from, so it
+ * lives here rather than in the dashboard tab.
  */
 import { useEffect, useState } from 'react';
 import type { Profile } from '@lib/types/profile.types';
+import { toOrigin } from '@lib/policy/scope';
 
 function send<T = any>(type: string, payload?: unknown): Promise<T> {
   return chrome.runtime.sendMessage({ type, payload }).then((r: any) => {
@@ -23,28 +30,54 @@ export default function App() {
   // Score starts null — only updated when user explicitly scores
   const [scoreData, setScoreData] = useState<{ score: number; critique: string } | null>(null);
   const [showCritique, setShowCritique] = useState(false);
-  const [autocomplete, setAutocomplete] = useState(true);
   const [status, setStatus] = useState('');
   const [scoring, setScoring] = useState(false);
 
+  // ── Per-origin grant state (§4) ──
+  const [currentOrigin, setCurrentOrigin] = useState<string | null>(null);
+  const [granted, setGranted] = useState(false);
+  const [grantBusy, setGrantBusy] = useState(false);
+
   useEffect(() => {
     send<Profile[]>('GET_ALL_PROFILES').then(p => setProfiles(p || [])).catch(() => {});
-    chrome.storage.local.get(['activeProvider', 'autocompleteEnabled'], (r) => {
+    chrome.storage.local.get(['activeProvider'], (r: { activeProvider?: string }) => {
       setActiveProvider(r.activeProvider || 'webgpu');
-      if (r.autocompleteEnabled !== undefined) setAutocomplete(r.autocompleteEnabled);
+    });
+
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      const origin = tabs[0]?.url ? toOrigin(tabs[0].url) : null;
+      setCurrentOrigin(origin);
+      if (origin) {
+        const isGranted = await chrome.permissions.contains({ origins: [`${origin}/*`] });
+        setGranted(isGranted);
+      }
     });
   }, []);
 
   const setProfile = async (id: number) => {
     await send('SET_ACTIVE_PROFILE', { id });
-    setProfiles(prev => prev.map(p => ({ ...p, isActive: p.id === id })));
+    setProfiles(prev => prev.map(p => ({ ...p, isActive: p.id === id ? 1 : 0 })));
   };
 
-  const toggleAutocomplete = () => {
-    const next = !autocomplete;
-    setAutocomplete(next);
-    chrome.storage.local.set({ autocompleteEnabled: next });
-    sendToActiveTab('TOGGLE_AUTOCOMPLETE', { enabled: next });
+  const handleGrantToggle = async () => {
+    if (!currentOrigin) return;
+    setGrantBusy(true);
+    try {
+      if (granted) {
+        await send('REVOKE_ORIGIN', { origin: currentOrigin });
+        setGranted(false);
+      } else {
+        // chrome.permissions.request (inside GRANT_ORIGIN's handler) must run
+        // off a user gesture — this handler runs synchronously off the
+        // button's onClick, so the transient-activation window is still open
+        // when the message reaches the service worker.
+        await send('GRANT_ORIGIN', { origin: currentOrigin });
+        setGranted(true);
+      }
+    } catch (e: any) {
+      setStatus('❌ ' + e.message);
+    }
+    setGrantBusy(false);
   };
 
   const handleScore = async () => {
@@ -130,6 +163,25 @@ export default function App() {
         </div>
       )}
 
+      {/* Per-Origin Access */}
+      <div className="bg-surface border border-border-default rounded-xl p-3">
+        <div className="flex items-center justify-between">
+          <div className="min-w-0">
+            <span className="text-body font-medium block">Site Access</span>
+            <span className="text-xs text-text-muted truncate block">
+              {currentOrigin ?? 'Not available on this page'}
+            </span>
+          </div>
+          <button
+            onClick={handleGrantToggle}
+            disabled={!currentOrigin || grantBusy}
+            className={`px-3 py-1.5 text-xs rounded-lg shrink-0 ${granted ? 'btn-secondary border border-accent-red/40 text-accent-red' : 'btn-primary'} disabled:opacity-50`}
+          >
+            {grantBusy ? '⏳' : granted ? 'Revoke' : 'Allow this site'}
+          </button>
+        </div>
+      </div>
+
       {/* Active Profile Grid — all profiles, scrollable */}
       <div>
         <h2 className="text-small font-semibold text-text-muted uppercase tracking-wider mb-2">Active Profile</h2>
@@ -141,7 +193,7 @@ export default function App() {
               }`}>
               <span className="text-xl mb-0.5">{p.icon}</span>
               <span className={`text-[10px] font-medium leading-tight ${p.isActive ? 'text-primary' : 'text-text-secondary'}`}>{p.name}</span>
-              {p.isActive && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary rounded-full" />}
+              {p.isActive ? <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary rounded-full" /> : null}
             </button>
           ))}
           {profiles.length === 0 && (
@@ -175,17 +227,8 @@ export default function App() {
 
       {status && <div className="text-xs text-text-secondary bg-surface rounded-lg px-3 py-2">{status}</div>}
 
-      {/* Toggles + Dashboard */}
-      <div className="mt-auto space-y-2 pt-3 border-t border-border-default">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-body font-medium block">Ghost Autocomplete</span>
-            <span className="text-xs text-text-muted">Suggest text while typing</span>
-          </div>
-          <button onClick={toggleAutocomplete} className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer border-none ${autocomplete ? 'bg-primary' : 'bg-surface border border-border-default'}`}>
-            <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${autocomplete ? 'translate-x-4' : 'translate-x-0'}`} />
-          </button>
-        </div>
+      {/* Dashboard */}
+      <div className="mt-auto pt-3 border-t border-border-default">
         <div className="flex items-center justify-between">
           <div>
             <span className="text-body font-medium block">Dashboard</span>

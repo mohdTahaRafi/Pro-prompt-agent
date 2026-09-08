@@ -9,6 +9,10 @@ lerna-debug.log*
 
 node_modules
 .output
+test-results
+playwright-report
+tests/bench/.bench-profile
+tests/bench/*.raw.json
 stats.html
 stats-*.json
 .wxt

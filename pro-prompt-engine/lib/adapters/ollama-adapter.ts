@@ -51,7 +51,7 @@ export async function checkOllamaHealth(): Promise<boolean> {
 
 async function getOllamaConfig(): Promise<{ baseUrl: string; model: string }> {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['ollamaBaseUrl', 'ollamaModel'], (r) => {
+    chrome.storage.local.get(['ollamaBaseUrl', 'ollamaModel'], (r: { ollamaBaseUrl?: string; ollamaModel?: string }) => {
       resolve({ baseUrl: r.ollamaBaseUrl || DEFAULT_URL, model: r.ollamaModel || DEFAULT_MODEL });
     });
   });

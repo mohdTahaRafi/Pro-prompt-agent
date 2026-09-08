@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-09-01T09:52:25.482Z",
+  "sourceUrl": "https://www.dol.gov/agencies/whd/contact/complaints",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "notes": "U.S. Department of Labor Wage and Hour Division complaint contact page — public government form with a long field list. Captured for Phase 1's sensitive-field corpus and as proof the capture harness round-trips (§8.3).",
+  "ppSchemaVersion": 1
+}
