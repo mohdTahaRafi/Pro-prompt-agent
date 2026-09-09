@@ -12,6 +12,13 @@ node_modules
 test-results
 playwright-report
 tests/bench/.bench-profile
+# Raw per-run bench output (e.g. baseline_phase1.raw.json) is scratch and
+# stays untracked. Exception: tests/bench/bakeoff_raw.json and
+# tests/bench/pruning_study_raw.json are committed on purpose — they back
+# tools/regen-bakeoff-report.ts (rebuild the Docs/planning report without
+# re-running paid API/Ollama calls) and carry stepMatchDisagreements for
+# the §10.1 human review pass. Keep excluding *.raw.json; do not add a
+# pattern that would also catch these two.
 tests/bench/*.raw.json
 stats.html
 stats-*.json
