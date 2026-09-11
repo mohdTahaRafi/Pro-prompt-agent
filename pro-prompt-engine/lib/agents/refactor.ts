@@ -1,8 +1,11 @@
 /**
- * Refactor Agent — Improves prompts using profile context, guidelines, and prior critique.
+ * Refactor Agent — improves prompts using profile context, guidelines, and
+ * prior critique. §2, §3.7.10 — direct-path text verb, judge tier (see
+ * lib/agents/text-tier.ts's header for why judge and not planner).
  */
 
-import { routeInference } from '@lib/adapters/llm-router';
+import { route } from '@lib/model/router';
+import { TEXT_TIER_POSTURE } from '@lib/agents/text-tier';
 
 export async function refactorPrompt(
   prompt: string,
@@ -38,19 +41,24 @@ Output ONLY the refactored prompt text. Do not include commentary, meta-text lik
     ? `Refactor this prompt. Pay close attention to the critique above and specifically address those weaknesses:\n\n${prompt}`
     : `Refactor and dramatically improve the following prompt:\n\n${prompt}`;
 
-  const response = await routeInference({
-    systemPrompt,
-    userPrompt: userMessage,
-    maxTokens: 2000,
-    temperature: 0.5,
+  const response = await route({
+    tier: 'judge', posture: TEXT_TIER_POSTURE,
+    system: systemPrompt, user: userMessage,
+    maxTokens: 2000, temperature: 0.5,
   });
 
-  const text = response.content.trim();
+  // Thrown, not silently swallowed into "succeeded with the unchanged
+  // prompt" — that would look like a no-op success rather than the failure
+  // it is (PP-6). entrypoints/background.ts's handler catch already turns a
+  // thrown error into {status:'error', message}, the same path the old
+  // routeInference cascade's own throw used.
+  if (!response.ok) throw new Error(`Refactor failed: ${response.error}`);
 
+  const text = response.value.content.trim();
   return {
-    text: text || prompt, // Fallback to original if empty
-    provider: response.provider,
-    latencyMs: response.latencyMs,
-    tokensUsed: response.tokensUsed,
+    text: text || prompt, // Fallback to original if the model returned nothing
+    provider: response.value.engine,
+    latencyMs: response.value.latencyMs,
+    tokensUsed: response.value.tokensUsed,
   };
 }

@@ -1,8 +1,10 @@
 /**
- * Generator Agent — Creates robust prompts from simple descriptions
+ * Generator Agent — creates robust prompts from simple descriptions. §2,
+ * §3.7.10 — direct-path text verb, judge tier (lib/agents/text-tier.ts).
  */
 
-import { routeInference } from '@lib/adapters/llm-router';
+import { route } from '@lib/model/router';
+import { TEXT_TIER_POSTURE } from '@lib/agents/text-tier';
 
 export async function generatePrompt(
   description: string,
@@ -25,22 +27,23 @@ Output ONLY the generated prompt text. Do not include commentary, explanations, 
   if (profileGuidelines) {
     systemPrompt += `\n\n--- Profile Guidelines ---\n${profileGuidelines}`;
   }
-  
+
   if (profileContext) {
     systemPrompt += `\n\n--- Knowledge Context ---\n${profileContext}`;
   }
 
-  const response = await routeInference({
-    systemPrompt,
-    userPrompt: `Generate a highly effective prompt for the following task description:\n\n${description}`,
-    maxTokens: verbosity > 0.7 ? 2048 : 1024,
-    temperature: 0.6,
+  const response = await route({
+    tier: 'judge', posture: TEXT_TIER_POSTURE,
+    system: systemPrompt, user: `Generate a highly effective prompt for the following task description:\n\n${description}`,
+    maxTokens: verbosity > 0.7 ? 2048 : 1024, temperature: 0.6,
   });
 
+  if (!response.ok) throw new Error(`Generate failed: ${response.error}`);
+
   return {
-    text: response.content.trim(),
-    provider: response.provider,
-    latencyMs: response.latencyMs,
-    tokensUsed: response.tokensUsed,
+    text: response.value.content.trim(),
+    provider: response.value.engine,
+    latencyMs: response.value.latencyMs,
+    tokensUsed: response.value.tokensUsed,
   };
 }

@@ -1,7 +1,9 @@
 /**
  * The Phase 2 planner bake-off (§10.1, task 2.17) — an offline developer
  * harness. NOT shipped in the extension; nothing under entrypoints/ or the
- * production lib/ tree imports this file or lib/agent/prompts.ts.
+ * production lib/ tree imports this file or its prompt draft.
+ * [Phase 4] The draft prompt moved to ./bakeoff-prompt.ts — lib/agent/prompts.ts
+ * is now the shipped planner prompt (Docs/planning/phase_4_model_tiers_routing.md §8.1).
  *
  * Scores each reachable candidate model against the corpus
  * (tools/build-corpus.ts + tools/collect-real-fixtures.ts) on all seven
@@ -33,7 +35,7 @@ installDomEnv();
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildBakeoffPrompt, type BakeoffPlanResponse, type BakeoffPlanStep } from '@lib/agent/prompts';
+import { buildBakeoffPrompt, type BakeoffPlanResponse, type BakeoffPlanStep } from './bakeoff-prompt';
 import { PerceptionSnapshotSchema, type PerceptionSnapshot } from '@lib/schemas/snapshot.schema';
 import { runPruningStudy } from './pruning-study';
 

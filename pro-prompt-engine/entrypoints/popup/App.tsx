@@ -26,7 +26,10 @@ function sendToActiveTab(type: string, payload?: unknown) {
 
 export default function App() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [activeProvider, setActiveProvider] = useState('webgpu');
+  // [Phase 4] there is no more single "active provider" — every text verb
+  // routes on the judge tier (lib/agents/text-tier.ts), local in both
+  // postures. This badge now shows THAT tier's live status instead.
+  const [judgeStatus, setJudgeStatus] = useState<string>('checking…');
   // Score starts null — only updated when user explicitly scores
   const [scoreData, setScoreData] = useState<{ score: number; critique: string } | null>(null);
   const [showCritique, setShowCritique] = useState(false);
@@ -40,9 +43,9 @@ export default function App() {
 
   useEffect(() => {
     send<Profile[]>('GET_ALL_PROFILES').then(p => setProfiles(p || [])).catch(() => {});
-    chrome.storage.local.get(['activeProvider'], (r: { activeProvider?: string }) => {
-      setActiveProvider(r.activeProvider || 'webgpu');
-    });
+    send<{ judge: { available: boolean; engine: string | null } }>('GET_POSTURE_CAPABILITY', { posture: 'local-only' })
+      .then((c) => setJudgeStatus(c.judge.available ? c.judge.engine ?? 'ready' : 'unavailable'))
+      .catch(() => setJudgeStatus('unavailable'));
 
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       const origin = tabs[0]?.url ? toOrigin(tabs[0].url) : null;
@@ -127,7 +130,7 @@ export default function App() {
           <h1 className="text-body font-bold mb-0.5">⚡ Pro Prompt</h1>
           <div className="flex items-center gap-2 text-small text-text-muted">
             <span className="w-2 h-2 rounded-full bg-accent-green" />
-            Provider: <span className="uppercase text-text-primary">{activeProvider}</span>
+            Judge: <span className="uppercase text-text-primary">{judgeStatus}</span>
           </div>
         </div>
 

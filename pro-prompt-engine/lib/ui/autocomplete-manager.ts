@@ -1,55 +1,96 @@
 /**
- * Autocomplete Manager (Ghost Text) — [Phase 1] REMOVED FROM THE BUILD.
+ * Autocomplete Manager (Ghost Text) — rebuilt. §9, OQ-8 closed.
+ * Docs/planning/phase_4_model_tiers_routing.md §9.
  *
- * Nothing imports this file. It violates three of the four §3.7.22
- * conditions simultaneously: it ran on every site, its isValidTarget()
- * returned true for type="password", and its debounced handler posted the
- * entire field value to the AUTOCOMPLETE message, which the router could
- * cascade to Groq when local engines were cold — a password typed into any
- * field on any site could leave the machine. Left on disk, unimported,
- * because the ghost-text positioning math (showGhostText) is the one part
- * of it that was correct and Phase 4 rebuilds on it once the sensitive-field
- * classifier (lib/page/sensitive.ts), the tier router and the grant model
- * all exist. See Docs/planning/phase_1_foundation_preconditions.md §5.1 and
- * architecture.md §3.7.22.
+ * Removed in Phase 1 for violating three of §3.7.22's four conditions
+ * simultaneously (see the file's old header, preserved in git history).
+ * Returns here with all four met:
+ *
+ *  1. LOCAL ONLY, NO REMOTE PATH — lib/model/router.ts's CHAINS.inline
+ *     contains promptApiEngine in BOTH postures and nothing else;
+ *     tests/unit/router.spec.ts fails the build if that ever changes.
+ *  2. GRANTED ORIGINS ONLY — this file is only ever imported and
+ *     instantiated from entrypoints/agent.content.ts, which is registered
+ *     per grant (lib/policy/scope.ts). There is no other injection point.
+ *  3. THE SAME classifySensitive() the agent uses — suppresses the
+ *     suggestion entirely; one classifier, one place to be right.
+ *  4. TEXT NODES, NEVER THE RAW-MARKUP DOM PROPERTY — two pre-created
+ *     <span> elements inside the shared shadow root
+ *     (lib/page/overlay/mount.ts); the suggestion goes in via textContent
+ *     only. That property (inner-H-T-M-L) appears nowhere in this file —
+ *     tests/unit/inline.spec.ts greps for it.
  */
 
 import { debounce } from '@lib/utils/debounce';
+import { classifySensitive } from '@lib/page/sensitive';
+import { ensureOverlayRoot } from '@lib/page/overlay/mount';
+
+// [§9] was 800/5/no-cap. 300ms is roughly one typing pause and leaves
+// ~100ms of the 400ms budget (§3's inline row) for the two-hop round trip.
+// Below ~12 chars a continuation is a guess, not a completion.
+const DEBOUNCE_MS = 300;
+const MIN_CHARS = 12;
+const MAX_TOKENS = 24;
+const GHOST_STYLE = `
+  .pp-ghost {
+    position: absolute;
+    pointer-events: none;
+    z-index: 2147483647;
+    color: rgba(148, 163, 184, 0.75);
+    white-space: pre-wrap;
+    overflow: hidden;
+    word-wrap: break-word;
+    box-sizing: border-box;
+  }
+  .pp-ghost-invisible { opacity: 0; }
+  .pp-ghost-suggestion { opacity: 0.9; font-style: italic; }
+`;
 
 export class AutocompleteManager {
   private activeElement: HTMLInputElement | HTMLTextAreaElement | HTMLElement | null = null;
-  private overlayDiv: HTMLDivElement | null = null;
-  private currentSuggestion: string = '';
-  private isEnabled: boolean = true;
+  private ghostEl: HTMLDivElement | null = null;
+  private invisibleSpan: HTMLSpanElement | null = null;
+  private suggestionSpan: HTMLSpanElement | null = null;
+  private currentSuggestion = '';
+  private enabled = true;
+  private abort: AbortController | null = null;
 
-  private requestAutocomplete = debounce(async (text: string) => {
-    if (!text.trim() || text.length < 5) return;
+  private onInput = debounce(async (el: HTMLElement) => {
+    if (classifySensitive(el) !== null) return;      // condition 3
+    if (!this.enabled) return;
+    const text = this.getText(el);
+    if (text.length < MIN_CHARS) return;
 
+    this.abort?.abort();                              // cancel the previous request
+    this.abort = new AbortController();
+    const signal = this.abort.signal;
+
+    let res: { ok: boolean; data?: { suggestion?: string } } | undefined;
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'AUTOCOMPLETE',
-        payload: { text }
+      // Two message hops: this content script -> service worker -> the
+      // offscreen document's warm Prompt API base session (§9, §5.1). The
+      // SW relays INLINE_COMPLETE to lib/model/router.ts's inline tier.
+      res = await chrome.runtime.sendMessage({
+        type: 'INLINE_COMPLETE',
+        payload: { text: text.slice(-1_200), maxTokens: MAX_TOKENS },   // last ~300 tokens of context
       });
-      if (response && response.status === 'success' && response.data.suggestion) {
-        this.showGhostText(response.data.suggestion);
-      }
-    } catch (err) {
-      console.warn('[Autocomplete] Failed', err);
+    } catch {
+      return;   // suppressed silently — never blocks or delays typing
     }
-  }, 800);
+    if (signal.aborted) return;
+    if (!res || res.ok !== true || !res.data?.suggestion) return;   // silent suppression
+    this.showGhostText(el, res.data.suggestion);
+  }, DEBOUNCE_MS);
 
   constructor() {
     this.initListeners();
-    chrome.storage.local.get('autocompleteEnabled', (res: { autocompleteEnabled?: boolean }) => {
-      if (res.autocompleteEnabled !== undefined) {
-        this.isEnabled = res.autocompleteEnabled;
-      }
+    chrome.storage.local.get('autocompleteEnabled', (r: { autocompleteEnabled?: boolean }) => {
+      if (r.autocompleteEnabled !== undefined) this.enabled = r.autocompleteEnabled;
     });
-
     chrome.runtime.onMessage.addListener((msg: { type: string; payload?: { enabled: boolean } }) => {
       if (msg.type === 'TOGGLE_AUTOCOMPLETE') {
-        this.isEnabled = msg.payload?.enabled ?? false;
-        if (!this.isEnabled) this.closeSuggestion();
+        this.enabled = msg.payload?.enabled ?? false;
+        if (!this.enabled) this.closeSuggestion();
       }
     });
   }
@@ -62,112 +103,100 @@ export class AutocompleteManager {
   }
 
   private handleInput(e: Event) {
-    if (!this.isEnabled) return;
+    if (!this.enabled) return;
     const target = e.target as HTMLElement;
     if (!this.isValidTarget(target)) return;
-    
+
     this.activeElement = target;
     this.closeSuggestion();
-    
-    const text = this.getText(target);
-    this.requestAutocomplete(text);
+    this.onInput(target);
   }
 
   private handleKeydown(e: KeyboardEvent) {
-    if (!this.overlayDiv || !this.activeElement) return;
-
+    if (!this.ghostEl || !this.activeElement) return;
     if (e.key === 'Tab') {
       e.preventDefault();
-      this.acceptSuggestion();
+      this.acceptSuggestion();                          // condition 4 (Tab accepts)
     } else if (e.key === 'Escape' || e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Backspace') {
       this.closeSuggestion();
     }
   }
 
   private isValidTarget(el: HTMLElement): boolean {
-    return (
-      el.tagName === 'TEXTAREA' ||
-      el.tagName === 'INPUT' ||
-      el.hasAttribute('contenteditable')
-    );
+    return el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.hasAttribute('contenteditable');
   }
 
   private getText(el: HTMLElement): string {
-    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
-      return (el as HTMLInputElement).value;
-    }
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') return (el as HTMLInputElement).value;
     return el.textContent || '';
   }
 
   private setText(el: HTMLElement, text: string) {
-    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
-      (el as HTMLInputElement).value = text;
-    } else {
-      el.textContent = text;
-    }
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') (el as HTMLInputElement).value = text;
+    else el.textContent = text;
     el.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
-  private showGhostText(suggestion: string) {
-    if (!this.activeElement) return;
+  /** The shared overlay shadow root — see lib/page/snippet-manager.ts's
+   *  identical pattern. Two child spans, created once and reused: the
+   *  first renders the field's existing text invisibly (for layout
+   *  alignment), the second renders the suggestion. Both set via
+   *  textContent only. */
+  private ensureGhostHost(): HTMLDivElement {
+    const shadow = ensureOverlayRoot();
+    if (!shadow.querySelector('style[data-pp-ghost-style]')) {
+      const style = document.createElement('style');
+      style.setAttribute('data-pp-ghost-style', '');
+      style.textContent = GHOST_STYLE;
+      shadow.appendChild(style);
+    }
+    if (!this.ghostEl) {
+      this.ghostEl = document.createElement('div');
+      this.ghostEl.className = 'pp-ghost';
+      this.invisibleSpan = document.createElement('span');
+      this.invisibleSpan.className = 'pp-ghost-invisible';
+      this.suggestionSpan = document.createElement('span');
+      this.suggestionSpan.className = 'pp-ghost-suggestion';
+      this.ghostEl.appendChild(this.invisibleSpan);
+      this.ghostEl.appendChild(this.suggestionSpan);
+      shadow.appendChild(this.ghostEl);
+    }
+    return this.ghostEl;
+  }
+
+  private showGhostText(el: HTMLElement, suggestion: string) {
+    if (this.activeElement !== el) return;   // focus moved while the request was in flight
     this.currentSuggestion = suggestion;
 
-    if (!this.overlayDiv) {
-      this.overlayDiv = document.createElement('div');
-      this.overlayDiv.style.cssText = `
-        position: absolute;
-        pointer-events: none;
-        z-index: 9999999;
-        color: rgba(148, 163, 184, 0.7); /* Subtle ghost color */
-        white-space: pre-wrap;
-        overflow: hidden;
-        word-wrap: break-word;
-        font-family: inherit;
-        font-size: inherit;
-        line-height: inherit;
-        padding: inherit;
-        border: inherit;
-        box-sizing: border-box;
-      `;
-      document.body.appendChild(this.overlayDiv);
-    }
+    const ghost = this.ensureGhostHost();
+    const rect = el.getBoundingClientRect();
+    const style = window.getComputedStyle(el);
 
-    const rect = this.activeElement.getBoundingClientRect();
-    const style = window.getComputedStyle(this.activeElement);
-    
-    this.overlayDiv.style.top = `${window.scrollY + rect.top}px`;
-    this.overlayDiv.style.left = `${window.scrollX + rect.left}px`;
-    this.overlayDiv.style.width = `${rect.width}px`;
-    this.overlayDiv.style.height = `${rect.height}px`;
-    this.overlayDiv.style.fontFamily = style.fontFamily;
-    this.overlayDiv.style.fontSize = style.fontSize;
-    this.overlayDiv.style.lineHeight = style.lineHeight;
-    this.overlayDiv.style.padding = style.padding;
-    this.overlayDiv.style.border = style.border;
-    
-    // We render the existing text as transparent, and the suggestion as visible
-    const existingText = this.getText(this.activeElement);
-    // Replace spaces with non-breaking spaces for proper alignment calculation
-    const invisiblePart = existingText.replace(/ /g, '\u00A0');
-    
-    this.overlayDiv.innerHTML = `<span style="opacity: 0;">${invisiblePart}</span><span style="opacity: 0.8; font-style: italic;">${suggestion}</span>`;
+    ghost.style.top = `${window.scrollY + rect.top}px`;
+    ghost.style.left = `${window.scrollX + rect.left}px`;
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.height = `${rect.height}px`;
+    ghost.style.fontFamily = style.fontFamily;
+    ghost.style.fontSize = style.fontSize;
+    ghost.style.lineHeight = style.lineHeight;
+    ghost.style.padding = style.padding;
+    ghost.style.border = style.border;
+
+    const existingText = this.getText(el).replace(/ /g, ' ');
+    this.invisibleSpan!.textContent = existingText;      // condition 4: textContent only
+    this.suggestionSpan!.textContent = suggestion;
+    ghost.style.display = '';
   }
 
   private acceptSuggestion() {
     if (!this.activeElement || !this.currentSuggestion) return;
-    
     const text = this.getText(this.activeElement);
-    const newText = text + this.currentSuggestion;
-    
-    this.setText(this.activeElement, newText);
+    this.setText(this.activeElement, text + this.currentSuggestion);
     this.closeSuggestion();
   }
 
   private closeSuggestion() {
-    if (this.overlayDiv) {
-      this.overlayDiv.remove();
-      this.overlayDiv = null;
-    }
+    if (this.ghostEl) this.ghostEl.style.display = 'none';
     this.currentSuggestion = '';
   }
 }

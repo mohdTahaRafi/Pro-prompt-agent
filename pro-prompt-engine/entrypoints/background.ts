@@ -17,8 +17,14 @@
  * problem, and is unaffected by any of this.
  */
 
-import { routeInference, getActiveProvider, setActiveProvider, getProviderStatus } from '@lib/adapters/llm-router';
-import { loadWebGPUModel, unloadWebGPUModel } from '@lib/adapters/webgpu-adapter';
+import { loadWebllmModel, unloadWebllmModel } from '@lib/model/engines/webllm';
+import { route } from '@lib/model/router';
+import { probePosture } from '@lib/model/posture';
+import { probeOllamaPlanner, setOllamaConfig } from '@lib/model/engines/ollama';
+import { setRemoteConfig } from '@lib/model/engines/remote';
+import { plan as runPlanner } from '@lib/agent/planner';
+import type { PlannerPolicy } from '@lib/agent/prompts';
+import { ensureOffscreen } from '@lib/model/offscreen-bridge';
 import { cacheManager } from '@lib/cache/cache-manager';
 import { db, seedDefaultProfiles, seedDefaultSnippets } from '@lib/db/dexie-db';
 import { scrubPII, hasPII } from '@lib/utils/pii-scrubber';
@@ -26,8 +32,8 @@ import { scorePrompt } from '@lib/agents/scorer';
 import { generatePrompt } from '@lib/agents/generator';
 import { runRefactorLoop } from '@lib/agents/loop-controller';
 import { comprehendContext } from '@lib/agents/comprehension';
-import { grantOrigin, revokeOrigin, reconcileGrants, toOrigin } from '@lib/policy/scope';
-import { getActiveSitePolicies } from '@lib/db/policy-store';
+import { grantOrigin, revokeOrigin, reconcileGrants, toOrigin, DEFAULT_CAPABILITIES } from '@lib/policy/scope';
+import { getActiveSitePolicies, getSitePolicy } from '@lib/db/policy-store';
 import { ExtensionRequest } from '@lib/schemas/message.schema';
 // [Phase 3] the Policy Gate, actuation, verification and journal — see
 // Docs/planning/phase_3_gate_actuation_verification.md §11.
@@ -40,7 +46,6 @@ import { verify } from '@lib/page/verifier';
 import { resolveIntent, UNMATCHED_COPY } from '@lib/agent/intent';
 import { ActionRequestSchema, handleOf } from '@lib/schemas/action.schema';
 import { formatRefusal } from '@lib/types/agent.types';
-import type { LLMRequest } from '@lib/types/llm.types';
 import type { ExtensionMessage, ExtensionResponse } from '@lib/types/message.types';
 import type { Profile } from '@lib/types/profile.types';
 import type { Snippet } from '@lib/types/snippet.types';
@@ -48,6 +53,7 @@ import type { Action, ActionRequest } from '@lib/schemas/action.schema';
 import type { PerceptionSnapshot } from '@lib/schemas/snapshot.schema';
 import type { RunRecord } from '@lib/types/run.types';
 import type { Tier } from '@lib/types/agent.types';
+import type { Posture } from '@lib/model/posture';
 
 export default defineBackground(() => {
   console.log('[Pro Prompt Engine] Service Worker initialized (WXT)');
@@ -220,6 +226,81 @@ export default defineBackground(() => {
   }
 
   // ════════════════════════════════════════
+  // Phase 4 — the Plan panel (§8.3, §11, task 4.14). Produces a plan; does
+  // NOT execute one. Every call creates its OWN fresh run row (unlike
+  // ensureRun's reuse-while-alive above) — each Plan click is a distinct
+  // planning attempt the journal should be able to tell apart, and a run
+  // in 'awaiting_plan_approval' has nothing further to converge onto until
+  // Phase 5 adds execution.
+  // ════════════════════════════════════════
+
+  type PlanOutcome =
+    | { phase: 'no_planner'; reason: string; ollamaPullCommand: string }
+    | { phase: 'refused'; code: string; message: string }
+    | { phase: 'planned'; runId: number; plan: import('@lib/schemas/plan.schema').Plan; disclosureSummary: string }
+    | { phase: 'invalid' };
+
+  async function runAgentPlan(tabId: number, goal: string, postureChoice: Posture): Promise<PlanOutcome> {
+    // The posture disclosure (§3.2) is shown BEFORE the run starts — probed
+    // first, against no run row at all, so a refusal never even creates one.
+    const capability = await probePosture(postureChoice);
+    if (!capability.planner.available) {
+      return {
+        phase: 'no_planner',
+        reason: capability.planner.reason ?? "The planner isn't available.",
+        ollamaPullCommand: 'ollama pull qwen2.5:14b',
+      };
+    }
+
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    const origin = tab?.url ? toOrigin(tab.url) : null;
+    if (!origin) return { phase: 'refused', code: 'TAB_GONE', message: formatRefusal('TAB_GONE') };
+
+    const now = Date.now();
+    const record: RunRecord = {
+      goal, state: 'planning', mode: 'suggest', posture: capability.posture, backend: 'dom',
+      origin, scope: [origin], roster: [tabId],
+      budgets: { maxActions: 40, maxRetriesPerStep: 3, maxPlannerCalls: 30, maxWallClockMs: 720_000 },
+      startedAt: now,
+    };
+    const runId = await db.runs.add(record);
+    await journal.append(runId, 'run.created', tabId, { origin, tabId, purpose: 'planning' });
+
+    const pre = await domBackend.perceive(tabId, runId, {});
+    if (!pre.ok) {
+      await db.runs.update(runId, { state: 'failed', outcome: 'failed', endedAt: Date.now() });
+      return { phase: 'refused', code: 'OUT_OF_SCOPE', message: 'Could not read the page — is Pro Prompt granted on it?' };
+    }
+    await ownership.record(runId, tabId, pre.value);
+
+    const policyRow = await getSitePolicy(origin);
+    const policy: PlannerPolicy = {
+      verbs: policyRow?.capabilities ?? DEFAULT_CAPABILITIES,
+      origins: [origin],
+      maxActions: 40,
+      maxWallClockMinutes: 12,
+    };
+
+    const result = await runPlanner({ goal, postureChoice: capability.posture, snapshot: pre.value, policy, runId });
+    if (!result.ok) {
+      if (result.error.code === 'NO_PLANNER') {
+        await db.runs.update(runId, { state: 'failed', outcome: 'failed', endedAt: Date.now() });
+        return { phase: 'no_planner', reason: result.error.reason, ollamaPullCommand: 'ollama pull qwen2.5:14b' };
+      }
+      await db.runs.update(runId, { state: 'failed', outcome: 'failed', endedAt: Date.now() });
+      return { phase: 'invalid' };
+    }
+
+    await db.runs.update(runId, { state: 'awaiting_plan_approval', plan: result.value });
+    await journal.append(runId, 'plan.produced', tabId, {
+      steps: result.value.steps.length, willNotDo: result.value.willNotDo.length,
+      clarifyingQuestion: result.value.clarifyingQuestion ?? null,
+    });
+
+    return { phase: 'planned', runId, plan: result.value, disclosureSummary: capability.disclosure.summary };
+  }
+
+  // ════════════════════════════════════════
   // Message Router
   // ════════════════════════════════════════
 
@@ -291,14 +372,7 @@ export default defineBackground(() => {
         return { status: 'success', data: { origin } };
       }
 
-      // ── LLM Inference ──
-      case 'INFERENCE': {
-        const request = message.payload as LLMRequest;
-        const result = await routeInference(request);
-        return { status: 'success', data: result };
-      }
-
-      // ── Scoring ──
+      // ── Scoring (§6.3 — Result-returning, never a fabricated score) ──
       case 'SCORE': {
         const prompt = (message.payload as { prompt: string })?.prompt;
         if (!prompt) return { status: 'error', message: 'No prompt provided' };
@@ -306,7 +380,10 @@ export default defineBackground(() => {
         // Load active profile's scoring guidelines for persona-specific evaluation
         const activeProfile = await cacheManager.getActiveProfile();
         const scoreRes = await scorePrompt(prompt, activeProfile?.scoringGuidelinesMd);
-        return { status: 'success', data: scoreRes };
+        if (!scoreRes.ok) {
+          return { status: 'error', message: `Could not score this — ${scoreRes.error}. Try again, or switch models.` };
+        }
+        return { status: 'success', data: scoreRes.value };
       }
 
       // ── Refactoring ──
@@ -376,25 +453,66 @@ export default defineBackground(() => {
         return { status: 'success', data: { generatedPrompt: result.text, provider: result.provider, latencyMs: result.latencyMs } };
       }
 
-      // ── Provider Management ──
-      case 'GET_PROVIDER_STATUS': {
-        const status = await getProviderStatus();
-        const active = await getActiveProvider();
-        return { status: 'success', data: { providers: status, activeProvider: active } };
+      // ── §11 — the Models tab: four tiers, what each is running on ──
+      case 'GET_POSTURE_CAPABILITY': {
+        const { posture } = message.payload as { posture: Posture };
+        const capability = await probePosture(posture);
+        return { status: 'success', data: capability };
       }
 
-      case 'SET_ACTIVE_PROVIDER': {
-        const { provider } = message.payload as { provider: string };
-        await setActiveProvider(provider as any);
-        return { status: 'success', data: { provider } };
+      case 'SET_OLLAMA_CONFIG': {
+        const { baseUrl, model } = message.payload as { baseUrl?: string; model?: string };
+        await setOllamaConfig({ baseUrl, model });
+        const probe = await probeOllamaPlanner();
+        return { status: 'success', data: probe };
       }
 
-      // ── WebGPU Model Management ──
+      case 'SET_REMOTE_CONFIG': {
+        const { apiKey, baseUrl, model, label } = message.payload as {
+          apiKey?: string; baseUrl?: string; model?: string; label?: string;
+        };
+        // MUST run from this user-gesture-originated message handler —
+        // chrome.permissions.request throws outside one (§5.4, mirroring
+        // lib/policy/scope.ts's grantOrigin).
+        const granted = await setRemoteConfig({ apiKey, baseUrl, model, label });
+        return granted
+          ? { status: 'success' }
+          : { status: 'error', message: 'The host permission for that URL was declined.' };
+      }
+
+      // ── §9 — inline ghost-text completion, local only ──
+      case 'INLINE_COMPLETE': {
+        const { text, maxTokens } = message.payload as { text: string; maxTokens?: number };
+        const result = await route({
+          tier: 'inline', posture: 'local-only',   // CHAINS.inline has no remote entry in EITHER posture
+          system: 'Continue the user\'s text naturally, in their own voice. Respond with ONLY the continuation — no repetition of their text, no quotes, no commentary. Keep it short: a phrase or a sentence at most.',
+          user: text, maxTokens: maxTokens ?? 24, temperature: 0.4,
+        });
+        // Suppressed silently on failure — inline completion never blocks
+        // or delays typing (§3's inline row).
+        return { status: 'success', data: { suggestion: result.ok ? result.value.content.trim() : null } };
+      }
+
+      case 'TOGGLE_AUTOCOMPLETE': {
+        const { enabled } = message.payload as { enabled: boolean };
+        await chrome.storage.local.set({ autocompleteEnabled: enabled });
+        return { status: 'success', data: { enabled } };
+      }
+
+      // ── §8.3, §8.4, task 4.14 — the Plan panel. Produces a plan; does
+      //    NOT execute one (§1). ──
+      case 'AGENT_PLAN': {
+        const { tabId, goal, posture } = message.payload as { tabId: number; goal: string; posture: Posture };
+        const data = await runAgentPlan(tabId, goal, posture);
+        return { status: 'success', data };
+      }
+
+      // ── WebLLM Model Management (the judge tier's fallback engine) ──
       case 'LOAD_MODEL': {
         const { model } = message.payload as { model: string };
         await ensureOffscreen();
         try {
-          await loadWebGPUModel(model as any);
+          await loadWebllmModel(model as any);
           return { status: 'success', data: { model, state: 'hot' } };
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -405,12 +523,12 @@ export default defineBackground(() => {
           if (msg.startsWith('INSUFFICIENT_VRAM:')) {
             return { status: 'error', message: msg };
           }
-          return { status: 'error', message: `WEBGPU_ERROR: ${msg}` };
+          return { status: 'error', message: `WEBLLM_ERROR: ${msg}` };
         }
       }
 
       case 'UNLOAD_MODEL': {
-        await unloadWebGPUModel();
+        await unloadWebllmModel();
         return { status: 'success' };
       }
 
@@ -616,37 +734,10 @@ export default defineBackground(() => {
   // ════════════════════════════════════════
   // Offscreen Document Management
   // ════════════════════════════════════════
-
-  // A promise, not a boolean: a boolean guard only stops a second caller
-  // from starting a second createDocument() — it does not make that second
-  // caller wait for the first one to actually finish, so it can return
-  // early and let its caller message an offscreen document that isn't
-  // ready yet. Every concurrent caller awaits the same in-flight creation.
-  let creatingOffscreen: Promise<void> | null = null;
-
-  async function ensureOffscreen(): Promise<void> {
-    const url = chrome.runtime.getURL('offscreen.html');
-    const contexts = await (chrome.runtime as any).getContexts?.({
-      contextTypes: ['OFFSCREEN_DOCUMENT'],
-      documentUrls: [url],
-    }).catch(() => []);
-
-    if (contexts?.length > 0) return;
-    if (creatingOffscreen) return creatingOffscreen;
-
-    creatingOffscreen = (async () => {
-      try {
-        await chrome.offscreen.createDocument({
-          url: 'offscreen.html',
-          reasons: ['WORKERS' as any],
-          justification: 'Running WebLLM inference via WebGPU',
-        });
-      } finally {
-        creatingOffscreen = null;
-      }
-    })();
-    return creatingOffscreen;
-  }
+  // [Phase 4] moved to lib/model/offscreen-bridge.ts, imported above, so the
+  // model engines (lib/model/engines/{prompt-api,webllm}.ts) can call it
+  // too without either duplicating the creation dance or importing from an
+  // entrypoint file.
 
   // ════════════════════════════════════════
   // Per-Origin Grant Drift Reconciliation (§4.3)
@@ -684,10 +775,10 @@ export default defineBackground(() => {
   chrome.runtime.onStartup.addListener(async () => {
     console.log('[SW] Browser startup');
     await cacheManager.warmUp().catch(console.error);
-    const result = await chrome.storage.local.get('activeProvider');
-    if (result.activeProvider === 'webgpu') {
-      console.log('[SW] WebGPU was active — ensuring offscreen');
-      await ensureOffscreen().catch(console.error);
-    }
+    // [Phase 4] no more single "active provider" to eagerly warm for — the
+    // judge/inline tiers stand the offscreen document up lazily, on first
+    // real call (lib/model/offscreen-bridge.ts), which is simpler and
+    // never wastes the warm-up on a posture that ends up Local-only with
+    // no local engine actually used this session.
   });
 });

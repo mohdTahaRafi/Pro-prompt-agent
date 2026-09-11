@@ -143,12 +143,21 @@ function makeRuntimeDouble() {
     sendMessage: vi.fn((message: any) => {
       return new Promise((resolve) => {
         let responded = false;
+        let anyAsync = false;
         for (const l of listeners) {
           const keepAlive = l(message, {}, (resp: any) => { responded = true; resolve(resp); });
-          if (responded) break;
-          if (!keepAlive) continue;
+          if (responded) return;
+          // [Phase 4] a listener returning `true` (chrome's "I will call
+          // sendResponse asynchronously" contract) must NOT be raced against
+          // an immediate resolve(undefined) — real chrome.runtime.sendMessage
+          // waits for that callback. The old version resolved undefined here
+          // unconditionally once the loop ended, which starved any listener
+          // whose response arrives after a microtask (every async handler in
+          // this codebase) — entrypoints/offscreen/main.ts's PROMPT_API_*
+          // handlers are the first callers that actually exercise this path.
+          if (keepAlive) anyAsync = true;
         }
-        if (!responded) resolve(undefined);
+        if (!responded && !anyAsync) resolve(undefined);
       });
     }),
     getURL: (path: string) => `chrome-extension://test-extension-id${path.startsWith('/') ? path : '/' + path}`,

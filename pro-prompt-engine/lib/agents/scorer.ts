@@ -1,88 +1,68 @@
 /**
- * Scorer Agent — Deterministic scoring evaluation
- * Uses active profile's ScoringGuidelines.md for per-persona criteria.
+ * Scorer Agent — deterministic scoring evaluation. §6.3.
+ *
+ * The old four-tier repair ladder (strict parse → brace repair → regex
+ * digit extraction → a hard-coded fallback object with a fixed numeric
+ * score and a "could not parse" critique) is DELETED. The last rung
+ * returned a fabricated score as though it were a measurement — a user
+ * saw "50 / 100" and could not tell it from a real evaluation. That was a
+ * PP-6 violation in the product's most visible number. Replaced by
+ * inferStructured(), returning Result: on MODEL_OUTPUT_INVALID the caller
+ * shows no number at all.
+ *
+ * Routed on the judge tier (§3.7.10, §2 table) — same reasoning as
+ * refactor.ts's header: scoring is short, structured, constrained-decodable
+ * output, exactly the judge tier's shape, and judge is local in BOTH
+ * postures (lib/model/router.ts's CHAINS), so this direct-path text verb
+ * never depends on Ollama or a remote key.
  */
+import { z } from 'zod';
+import { inferStructured } from '@lib/model/router';
+import type { Result } from '@lib/utils/result';
+import type { RouteError } from '@lib/model/router-types';
+import { TEXT_TIER_POSTURE } from '@lib/agents/text-tier';
 
-import { routeInference } from '@lib/adapters/llm-router';
+export const ScoreSchema = z.object({
+  score: z.number().min(0).max(100),
+  critique: z.string().max(500),
+});
 
-export async function scorePrompt(
-  prompt: string,
-  scoringGuidelinesMd?: string,
-): Promise<{
+export interface ScoreResult {
   score: number;
   critique: string;
   provider: string;
   latencyMs: number;
   tokensUsed?: number;
-}> {
+}
+
+export async function scorePrompt(
+  prompt: string,
+  scoringGuidelinesMd?: string,
+): Promise<Result<ScoreResult, RouteError>> {
   const guidelinesSection = scoringGuidelinesMd
     ? `\n\n--- PROFILE SCORING CRITERIA (use these, not generic criteria) ---\n${scoringGuidelinesMd}`
     : `\n\n--- DEFAULT SCORING CRITERIA ---\n- Intent Clarity (40%): Is the primary goal unambiguous?\n- Constraint Rigidity (30%): Are boundaries, formatting, and edge cases explicitly defined?\n- Persona/Role Alignment (30%): Is the requested role explicitly clear and useful?`;
 
   const systemPrompt = `You are a deterministic prompt quality evaluator. Score the provided prompt on a scale of 0 to 100.${guidelinesSection}
 
-You MUST respond with ONLY a valid JSON object — no markdown, no backticks, no explanation text before or after.
-The JSON must have exactly two keys: "score" (integer 0-100) and "critique" (a single sentence explaining the main weakness).
+Respond with a score (0-100 integer) and a single-sentence critique explaining the main weakness.`;
 
-EXAMPLE of correct output format:
-{"score": 72, "critique": "The prompt lacks explicit output format constraints and does not specify the target audience level."}
+  const start = performance.now();
+  const result = await inferStructured({
+    tier: 'judge', posture: TEXT_TIER_POSTURE,
+    system: systemPrompt, user: `Score this prompt:\n\n${prompt}`,
+    maxTokens: 300, temperature: 0.3,
+  }, ScoreSchema);
 
-EXAMPLE of correct output format:
-{"score": 88, "critique": "Strong prompt with clear intent, though edge cases around null inputs are not addressed."}`;
+  if (!result.ok) return result;
 
-  const response = await routeInference({
-    systemPrompt,
-    userPrompt: `Score this prompt:\n\n${prompt}`,
-    maxTokens: 300,
-    temperature: 0.3,
-  });
-
-  try {
-    const rawContent = response.content.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    if (!rawContent) {
-      console.error('[Scorer] Empty response from LLM. Provider:', response.provider);
-      throw new Error('Empty model output');
-    }
-
-    // Extract JSON object robustly
-    const match = rawContent.match(/\{[\s\S]*?\}/);
-    let cleanJson = match ? match[0] : rawContent;
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(cleanJson);
-    } catch {
-      // Self-healing: try to close truncated JSON
-      if (!cleanJson.endsWith('"') && !cleanJson.endsWith('}')) cleanJson += '"';
-      if (!cleanJson.endsWith('}')) cleanJson += '}';
-      try {
-        parsed = JSON.parse(cleanJson);
-      } catch {
-        // Last resort: regex extract score number from any text
-        const scoreMatch = rawContent.match(/(?:"?score"?\s*:\s*)?(\d{1,3})/i);
-        const score = scoreMatch ? Math.min(100, parseInt(scoreMatch[1], 10)) : 50;
-        const critiqueMatch = rawContent.match(/(?:"?critique"?\s*:\s*"?)([^"}{]+)/i);
-        const critique = critiqueMatch ? critiqueMatch[1].trim() : 'Could not parse detailed critique.';
-        return { score, critique, provider: response.provider, latencyMs: response.latencyMs, tokensUsed: response.tokensUsed };
-      }
-    }
-
-    return {
-      score: typeof parsed.score === 'number' ? Math.min(100, Math.max(0, parsed.score)) : parseInt(parsed.score, 10) || 50,
-      critique: parsed.critique || 'No critique provided.',
-      provider: response.provider,
-      latencyMs: response.latencyMs,
-      tokensUsed: response.tokensUsed,
-    };
-  } catch (error) {
-    console.error('[Scorer] Parsing failed, using fallback.', error, 'Raw:', response.content?.slice(0, 200));
-    return {
-      score: 50,
-      critique: 'Could not parse LLM response. Check your model provider and API key.',
-      provider: response.provider,
-      latencyMs: response.latencyMs,
-      tokensUsed: response.tokensUsed,
-    };
-  }
+  return {
+    ok: true,
+    value: {
+      score: result.value.score,
+      critique: result.value.critique,
+      provider: 'judge',
+      latencyMs: Math.round(performance.now() - start),
+    },
+  };
 }
