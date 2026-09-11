@@ -1,0 +1,28 @@
+<!doctype html>
+<!--
+  Phase 3 §6.3 — a cookie-banner-style modal covering a button underneath
+  it, for lib/page/actuator.ts's isObscured() occlusion check. The button
+  is visible (non-zero size, not display:none) but its centre point is
+  covered by the modal, which is the single most common reason a
+  "successful" click does nothing on a real page.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Modal-covered button fixture</title></head>
+<body>
+  <h1>Page with a cookie banner</h1>
+  <button id="buy-now" style="position:absolute;top:200px;left:100px;width:160px;height:44px;">Continue</button>
+
+  <div id="cookie-modal"
+       style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">
+    <div style="background:white;padding:24px;">
+      <p>We use cookies.</p>
+      <button id="accept-cookies">Accept</button>
+    </div>
+  </div>
+  <script>
+    document.getElementById('accept-cookies').addEventListener('click', () => {
+      document.getElementById('cookie-modal').remove();
+    });
+  </script>
+</body>
+</html>

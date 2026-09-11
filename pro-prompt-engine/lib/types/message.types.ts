@@ -26,7 +26,13 @@ export type MessageType =
   // the service worker once and caches the answer (entrypoints/agent.content.ts).
   | 'GET_TAB_ID'
   // [Phase 2] the Perception debug tab's granted-origin dropdown (§9).
-  | 'GET_ACTIVE_GRANTS';
+  | 'GET_ACTIVE_GRANTS'
+  // [Phase 3] the Copilot panel — one instruction, gated, acted, verified.
+  | 'AGENT_ACT' | 'AGENT_APPROVAL_RESPONSE' | 'AGENT_STOP'
+  | 'AGENT_GET_RUN_EVENTS' | 'AGENT_LIST_RUNS'
+  // [Phase 3 §15, e2e build only] tests/e2e/gate-wake.bench.ts — see
+  // lib/schemas/message.schema.ts's AgentBenchGateRequest comment.
+  | 'AGENT_BENCH_GATE';
 
 export interface ExtensionResponse<T = unknown> {
   status: 'success' | 'error' | 'not_implemented' | 'unknown_type';

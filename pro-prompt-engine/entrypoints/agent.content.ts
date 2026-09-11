@@ -11,8 +11,10 @@
  * Answers the four Phase 2 perception verbs (PERCEIVE_STRUCTURE,
  * PERCEIVE_ELEMENT, PERCEIVE_PAGE, WAIT_FOR_SETTLE) plus the Phase 1
  * pp-ping/pp-pong bridge and snippet expansion, which now share this
- * script's overlay host (lib/page/overlay/mount.ts). There is still no
- * gate, no actuation, no run — this phase reads and describes only.
+ * script's overlay host (lib/page/overlay/mount.ts).
+ * [Phase 3] adds the ACTUATE handler — lib/actuation/dom-backend.ts proxies
+ * a permitted, already-gated action here; lib/page/actuator.ts is the only
+ * code in this file that touches the DOM on the agent's behalf.
  *
  * ctx.onInvalidated matters: when the extension is updated or reloaded, the
  * old content script's chrome.runtime handle is dead but its listeners are
@@ -29,6 +31,8 @@ import type { ElementDescriptor } from '@lib/schemas/snapshot.schema';
 import { computeRole } from '@lib/page/roles';
 import { computeAccessibleName } from '@lib/page/accname';
 import { classifySensitive } from '@lib/page/sensitive';
+import { actuate } from '@lib/page/actuator';
+import { ActuateMessageSchema } from '@lib/schemas/action.schema';
 
 export default defineContentScript({
   registration: 'runtime',   // registered by chrome.scripting, never by the manifest
@@ -69,6 +73,20 @@ export default defineContentScript({
 
       handle(parsed.data).then(sendResponse);
       return true;   // keep the channel open for the async response
+    });
+
+    // [Phase 3] ACTUATE — the only path by which this content script
+    // touches the DOM on the agent's behalf. The action has already been
+    // permitted by lib/policy/gate.ts in the service worker; this listener
+    // performs it and reports what it observed, nothing more (§6.1).
+    chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
+      const parsed = ActuateMessageSchema.safeParse(raw);
+      if (!parsed.success) return false;   // not ours; let another listener answer
+
+      actuate(parsed.data.action, parsed.data.epoch, registry, parsed.data.runId).then((result) => {
+        sendResponse(result.ok ? { ok: true, value: result.value } : { ok: false, error: result.error });
+      });
+      return true;
     });
 
     async function handle(req: import('@lib/schemas/snapshot.schema').PerceptionRequestType) {

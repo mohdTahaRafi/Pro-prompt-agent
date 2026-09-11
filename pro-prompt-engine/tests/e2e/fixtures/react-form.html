@@ -1,0 +1,74 @@
+<!doctype html>
+<!--
+  Phase 3 §6.3 task 3.8 — a controlled-input fixture.
+
+  This simulates React's exact controlled-component failure mode without
+  pulling in a real React bundle (this fixture is served from a bare
+  http-server with no build step, and a real bundle would need network
+  access this environment cannot depend on): an instance-level `value`
+  setter shadows the prototype's, exactly as a React-attached DOM node's
+  does, silently swallowing a plain `el.value = x` assignment and re-
+  asserting its own "state" on every animation frame — exactly what a
+  real React re-render does. lib/page/actuator.ts's native-setter
+  technique (calling the *prototype's* setter directly, then dispatching a
+  bubbling `input` event) is the only thing that can get past this.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>React-style controlled form</title></head>
+<body>
+  <h1>Controlled form</h1>
+  <form id="app" aria-label="Application form">
+    <label for="full-name">Full name</label>
+    <input id="full-name" name="full_name">
+  </form>
+
+  <script>
+    (function () {
+      const input = document.getElementById('full-name');
+      let state = '';     // the framework's own controlled state
+      let tracker = '';   // mirrors React's real _valueTracker
+      const nativeGetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').get;
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+
+      // The actual React mechanism: an instance property shadows the
+      // prototype's accessor. Calling it (a plain `el.value = x`) DOES
+      // write the DOM — but it ALSO updates the tracker to match, which is
+      // the trap: React's change detection compares the tracker against
+      // the DOM's current value on the next `input` event, and a write
+      // that went through this shadowed setter leaves them equal, so
+      // React concludes "nothing really changed" and never updates its
+      // own state. lib/page/actuator.ts's technique calls the PROTOTYPE's
+      // setter directly, bypassing this property entirely — the tracker
+      // is left stale, the mismatch is real, and React's state updates.
+      Object.defineProperty(input, 'value', {
+        configurable: true,
+        get() { return nativeGetter.call(this); },
+        set(v) { nativeSetter.call(this, v); tracker = v; },
+      });
+
+      input.addEventListener('input', () => {
+        const current = nativeGetter.call(input);
+        if (tracker !== current) {
+          state = current;
+          tracker = current;
+        }
+        // else: the tracker already matches (a naive `.value =` write
+        // touched it) — React treats this as a no-op input event.
+      });
+
+      // The render loop: continuously reasserts the framework's own state
+      // into the DOM, exactly as a re-render would on the next paint. A
+      // write that never produced a genuine tracker mismatch is silently
+      // reverted within one frame.
+      function render() {
+        nativeSetter.call(input, state);
+        tracker = state;
+        requestAnimationFrame(render);
+      }
+      requestAnimationFrame(render);
+
+      window.__lastValue = () => nativeGetter.call(input);
+    })();
+  </script>
+</body>
+</html>

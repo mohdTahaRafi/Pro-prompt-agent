@@ -61,9 +61,17 @@ export const INTERACTIVE_ROLES: ReadonlySet<string> = new Set([
  * left out because an ordinary page has hundreds of them and they say nothing
  * a heading or a repeat region does not say better (§7.3 priority 3).
  */
+// [Phase 3] 'alert' added: lib/page/verifier.ts's negative check (§7.1) —
+// run after every mutating action — looks for a role=alert node that
+// appeared inside the target's form. Without it in this set, the walk
+// (§7.1) never adds an alert-role node as a candidate at all, and the
+// snapshot the verifier reads back could never contain the very thing it
+// is looking for. Costs one more structural candidate on pages that use
+// role="alert" for inline validation, which is exactly the population the
+// negative check exists to see.
 export const STRUCTURAL_ROLES: ReadonlySet<string> = new Set([
-  'banner', 'columnheader', 'complementary', 'contentinfo', 'form', 'heading',
-  'main', 'navigation', 'region', 'rowheader', 'search', 'table',
+  'alert', 'banner', 'columnheader', 'complementary', 'contentinfo', 'form',
+  'heading', 'main', 'navigation', 'region', 'rowheader', 'search', 'table',
 ]);
 
 /** The landmark subset of STRUCTURAL_ROLES — §7.3 priority 2. */

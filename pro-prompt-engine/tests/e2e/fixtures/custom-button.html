@@ -1,0 +1,21 @@
+<!doctype html>
+<!--
+  Phase 3 §6.3 task 3.8 — a `<div>` control that only listens for
+  `pointerdown` (a common pattern for drag-aware or custom UI-kit
+  components), not `click`. Proves the actuator's pointer sequence
+  (pointerdown -> mousedown -> pointerup -> mouseup -> click) fires the
+  handler; a bare `el.click()` — which dispatches only `click` — would not.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Custom button fixture</title></head>
+<body>
+  <h1>Custom button</h1>
+  <div id="custom-btn" role="button" tabindex="0" style="display:inline-block;padding:12px 20px;border:1px solid #333;cursor:pointer;">Continue</div>
+  <p id="result">not fired</p>
+  <script>
+    document.getElementById('custom-btn').addEventListener('pointerdown', () => {
+      document.getElementById('result').textContent = 'fired';
+    });
+  </script>
+</body>
+</html>

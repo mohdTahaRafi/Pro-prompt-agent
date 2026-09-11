@@ -312,6 +312,18 @@ function computeValueShape(el: Element, tag: string, isFile: boolean): string | 
   } else if (tag === 'select') {
     const sel = el as HTMLSelectElement;
     raw = sel.options[sel.selectedIndex]?.text;
+  } else if ((el as HTMLElement).isContentEditable) {
+    // [Phase 3 correction — found by tests/e2e/copilot.bench.ts's 40-action
+    // sweep] Without this branch, every contenteditable region (quill.html)
+    // reports valueShape: undefined forever, so lib/page/verifier.ts's
+    // `type` case NEVER sees its write land — a genuine WRITE_REJECTED
+    // false negative on every successful edit. Mirrors
+    // lib/page/actuator.ts's own readValue(), which already reads
+    // innerText/textContent for isContentEditable — the two
+    // representations of "this element's current value" must agree, or
+    // the verifier is comparing the actuator's before-state against a
+    // representation the perception layer never produces.
+    raw = (el as HTMLElement).innerText ?? el.textContent ?? '';
   } else {
     return undefined;
   }

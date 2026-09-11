@@ -4,10 +4,16 @@
  * [Phase 2 §11 task 2.15] DEFAULT_CAPABILITIES is widened from the Phase 1
  * empty set to the four perception verbs: a fresh grant now registers
  * agent.content.ts (Phase 2 §3.1), which answers read_structure,
- * read_element, wait_for_settle and read_page. There is still no actuation,
- * no gate, no run — Phase 3 adds the interaction verbs.
+ * read_element, wait_for_settle and read_page.
+ * [Phase 3 §12 task 3.15] widened again to the eleven verbs this phase
+ * implements (§3, lib/policy/gate.ts's IMPLEMENTED_VERBS) — a fresh grant
+ * now permits the gate to actually classify and dispatch interaction and
+ * navigation verbs, not just read them. A site's capabilities are never
+ * wider than the implemented vocabulary (PR-SEC-6) and can be narrowed
+ * per-origin later; this is only ever the ceiling a fresh grant starts at.
  * See Docs/planning/phase_1_foundation_preconditions.md §4,
- * Docs/planning/phase_2_perception.md §3.1, §11.
+ * Docs/planning/phase_2_perception.md §3.1, §11,
+ * Docs/planning/phase_3_gate_actuation_verification.md §12.
  */
 import { db } from '@lib/db/dexie-db';
 import type { Verb } from '@lib/schemas/action.schema';
@@ -16,7 +22,8 @@ export const AGENT_SCRIPT_ID_PREFIX = 'pp-agent-';
 
 export const DEFAULT_CAPABILITIES: Verb[] = [
   'read_page', 'read_structure', 'read_element', 'wait_for_settle',
-];   // Phase 3 widens this further with the interaction verbs
+  'scroll', 'click', 'type', 'select', 'navigate', 'history_back', 'history_forward',
+];
 
 /** Normalise any URL to the origin form used as the sitePolicy primary key. */
 export function toOrigin(url: string): string | null {

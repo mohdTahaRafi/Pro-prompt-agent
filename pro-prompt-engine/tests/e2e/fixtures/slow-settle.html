@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  Phase 3 §10 — tests/e2e/stop.spec.ts's fixture. Typing into the search
+  field starts a "live suggestions" loop that mutates the DOM every 150ms
+  — faster than the 400ms visible quiet window — forever, so the page
+  never settles once triggered. The initial page load settles normally
+  (fast), so the first perceive (before acting) is quick; only the
+  post-action read (waiting to verify) is deliberately slow, which is what
+  gives the test room to press Stop mid-flight.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Slow-settle fixture</title></head>
+<body>
+  <h1>Live search</h1>
+  <form id="search-form" aria-label="Search">
+    <label for="search-box">Search</label>
+    <input id="search-box" name="q">
+  </form>
+  <ul id="suggestions"></ul>
+  <script>
+    let started = false;
+    document.getElementById('search-box').addEventListener('input', () => {
+      if (started) return;
+      started = true;
+      let n = 0;
+      setInterval(() => {
+        n += 1;
+        const li = document.createElement('li');
+        li.textContent = 'suggestion ' + n;
+        document.getElementById('suggestions').appendChild(li);
+      }, 150);
+    });
+  </script>
+</body>
+</html>
