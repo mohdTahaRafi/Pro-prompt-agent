@@ -1,0 +1,33 @@
+<!doctype html>
+<!--
+  Phase 3 §6.3 task 3.8 — a rich-text (contenteditable) editor fixture.
+
+  A real Quill/ProseMirror/Lexical bundle needs network access this
+  environment cannot depend on; what actually matters for
+  lib/page/actuator.ts's `doType` contenteditable path is that
+  `document.execCommand('insertText', ...)` is the one API that produces a
+  genuine `beforeinput`/`input` pair on a contenteditable region — which is
+  exactly what every real rich-text editor's own input pipeline listens
+  for. This fixture listens for that same pair and mirrors what the editor
+  saw, which is the property under test, independent of which specific
+  library would be wired to it in production.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Rich editor fixture</title></head>
+<body>
+  <h1>Rich editor</h1>
+  <div id="editor" contenteditable="true" role="textbox" aria-label="Message"
+       style="border:1px solid #333;min-height:80px;padding:8px;width:400px;"></div>
+  <p id="events-log"></p>
+  <script>
+    const editor = document.getElementById('editor');
+    const log = [];
+    editor.addEventListener('beforeinput', () => log.push('beforeinput'));
+    editor.addEventListener('input', () => {
+      log.push('input');
+      document.getElementById('events-log').textContent = log.join(',');
+    });
+    window.__editorText = () => editor.textContent;
+  </script>
+</body>
+</html>

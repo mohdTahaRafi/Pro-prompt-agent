@@ -20,22 +20,204 @@
 import { routeInference, getActiveProvider, setActiveProvider, getProviderStatus } from '@lib/adapters/llm-router';
 import { loadWebGPUModel, unloadWebGPUModel } from '@lib/adapters/webgpu-adapter';
 import { cacheManager } from '@lib/cache/cache-manager';
-import { seedDefaultProfiles, seedDefaultSnippets } from '@lib/db/dexie-db';
+import { db, seedDefaultProfiles, seedDefaultSnippets } from '@lib/db/dexie-db';
 import { scrubPII, hasPII } from '@lib/utils/pii-scrubber';
 import { scorePrompt } from '@lib/agents/scorer';
 import { generatePrompt } from '@lib/agents/generator';
 import { runRefactorLoop } from '@lib/agents/loop-controller';
 import { comprehendContext } from '@lib/agents/comprehension';
-import { grantOrigin, revokeOrigin, reconcileGrants } from '@lib/policy/scope';
+import { grantOrigin, revokeOrigin, reconcileGrants, toOrigin } from '@lib/policy/scope';
 import { getActiveSitePolicies } from '@lib/db/policy-store';
 import { ExtensionRequest } from '@lib/schemas/message.schema';
+// [Phase 3] the Policy Gate, actuation, verification and journal — see
+// Docs/planning/phase_3_gate_actuation_verification.md §11.
+import { gate } from '@lib/policy/gate';
+import * as ownership from '@lib/policy/ownership';
+import * as journal from '@lib/agent/journal';
+import { transition } from '@lib/agent/run-state';
+import { domBackend } from '@lib/actuation/dom-backend';
+import { verify } from '@lib/page/verifier';
+import { resolveIntent, UNMATCHED_COPY } from '@lib/agent/intent';
+import { ActionRequestSchema, handleOf } from '@lib/schemas/action.schema';
+import { formatRefusal } from '@lib/types/agent.types';
 import type { LLMRequest } from '@lib/types/llm.types';
 import type { ExtensionMessage, ExtensionResponse } from '@lib/types/message.types';
 import type { Profile } from '@lib/types/profile.types';
 import type { Snippet } from '@lib/types/snippet.types';
+import type { Action, ActionRequest } from '@lib/schemas/action.schema';
+import type { PerceptionSnapshot } from '@lib/schemas/snapshot.schema';
+import type { RunRecord } from '@lib/types/run.types';
+import type { Tier } from '@lib/types/agent.types';
 
 export default defineBackground(() => {
   console.log('[Pro Prompt Engine] Service Worker initialized (WXT)');
+
+  // chrome.storage.session defaults to trusted (extension-page/SW) contexts
+  // only in MV3. lib/page/actuator.ts's stop check runs in the content
+  // script and needs to read it — this is the one call that opens that
+  // door. Harmless to call every SW start; setAccessLevel is idempotent.
+  chrome.storage.session.setAccessLevel?.({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' })
+    .catch((e: unknown) => console.error('[SW] storage.session.setAccessLevel failed', e));
+
+  // ════════════════════════════════════════
+  // Phase 3 — Agent orchestration (§11)
+  //
+  // The Copilot panel sends one free-typed instruction; everything from
+  // "resolve it against the current snapshot" through "journal the
+  // verified outcome" happens here, in the service worker, on the other
+  // side of the gate from the requester (architecture.md §3.7.1).
+  // ════════════════════════════════════════
+
+  const TERMINAL_RUN_STATES = new Set<RunRecord['state']>(['halted', 'stopped', 'failed', 'completed']);
+
+  // KNOWN LIMITATION: a pending Always-tier approval lives only in this
+  // in-memory map. A service-worker restart while one is outstanding loses
+  // it — the run stays 'awaiting_approval' with no path back. Recovery is
+  // explicitly out of scope this phase (§1: "Recovery from failure is
+  // reported, never attempted — that is Phase 6"); the same run can always
+  // be abandoned and a fresh instruction started against the same tab.
+  const pendingApprovals = new Map<string, {
+    runId: number; tabId: number; req: ActionRequest; tier: Tier; preSnapshot: PerceptionSnapshot;
+  }>();
+
+  /** One run per (currently-selected) tab, reused while it is still alive.
+   *  Roster length is always 1 this phase (§1) — Phase 7 is what makes this
+   *  a real multi-tab lookup. */
+  async function ensureRun(tabId: number): Promise<(RunRecord & { id: number }) | null> {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (!tab?.url) return null;
+    const origin = toOrigin(tab.url);
+    if (!origin) return null;
+
+    const existing = await db.runs
+      .filter((r) => r.roster.length === 1 && r.roster[0] === tabId && !TERMINAL_RUN_STATES.has(r.state))
+      .first();
+    if (existing?.id !== undefined) return existing as RunRecord & { id: number };
+
+    const now = Date.now();
+    const record: RunRecord = {
+      goal: '', state: 'running', mode: 'supervised', posture: 'local-only', backend: 'dom',
+      origin, scope: [origin], roster: [tabId],
+      budgets: { maxActions: 40, maxRetriesPerStep: 3, maxPlannerCalls: 30, maxWallClockMs: 720_000 },
+      startedAt: now,
+    };
+    const id = await db.runs.add(record);
+    await journal.append(id, 'run.created', tabId, { origin, tabId });
+    return { ...record, id };
+  }
+
+  // read_page/read_structure/read_element/wait_for_settle are Phase 2's
+  // perception verbs, not actuation — they are answered by
+  // entrypoints/agent.content.ts's EXISTING PerceptionRequest listener
+  // (unchanged since Phase 2), never by lib/page/actuator.ts's ACTUATE
+  // handler, which has no case for them at all. They are not mutating, so
+  // there is nothing for lib/page/verifier.ts to verify either — the read
+  // itself, succeeding or not, is the whole outcome.
+  const PERCEPTION_VERBS = new Set(['read_page', 'read_structure', 'read_element', 'wait_for_settle']);
+
+  async function performRead(run: RunRecord & { id: number }, tabId: number, req: ActionRequest) {
+    const t0 = performance.now();
+    const a = req.action as Extract<Action, { verb: 'read_page' | 'read_structure' | 'read_element' | 'wait_for_settle' }>;
+    const message = a.verb === 'read_page' ? { type: 'PERCEIVE_PAGE', runId: String(run.id) }
+      : a.verb === 'read_structure' ? { type: 'PERCEIVE_STRUCTURE', runId: String(run.id), region: (a as any).region, tokenBudget: 6_000 }
+      : a.verb === 'read_element' ? { type: 'PERCEIVE_ELEMENT', runId: String(run.id), handle: (a as any).handle }
+      : { type: 'WAIT_FOR_SETTLE', runId: String(run.id), maxMs: (a as any).maxMs };
+
+    const res = await chrome.tabs.sendMessage(tabId, message).catch(() => null);
+    const elapsedMs = Math.round(performance.now() - t0);
+    if (!res || res.status === 'error') {
+      const code = res?.message ?? 'TARGET_MISSING';
+      await journal.append(run.id, 'action.refused', tabId, { code, verb: a.verb });
+      return { phase: 'failed' as const, failureCause: code };
+    }
+    await journal.append(run.id, 'action.dispatched', tabId, { verb: a.verb, elapsedMs });
+    await journal.append(run.id, 'action.observed', tabId, { verb: a.verb, verified: 'confirmed', check: 'state' });
+    return { phase: 'done' as const, verb: a.verb, tier: 'low' as const, verified: 'confirmed' as const, check: 'state' as const, data: res.data, elapsedMs };
+  }
+
+  /** act → settle+re-read (perceive already waits for settle, §7.6) →
+   *  verify → journal. Shared by the direct-permit path and the
+   *  after-approval path so both produce the same five-line story
+   *  (§13's milestone: requested, permitted, acted, settled, confirmed). */
+  async function performAction(
+    run: RunRecord & { id: number }, tabId: number, req: ActionRequest, pre: PerceptionSnapshot, tier: Tier,
+  ) {
+    const effect = await domBackend.act(tabId, run.id, req.action, req.epoch);
+    if (!effect.ok) {
+      await journal.append(run.id, 'action.refused', tabId, { code: effect.error, verb: req.action.verb });
+      return { phase: 'failed' as const, failureCause: effect.error };
+    }
+    await journal.append(run.id, 'action.dispatched', tabId, { verb: req.action.verb, elapsedMs: effect.value.elapsedMs });
+
+    const post = await domBackend.perceive(tabId, run.id, {});
+    if (!post.ok) {
+      return { phase: 'failed' as const, failureCause: 'TARGET_MISSING' as const };
+    }
+    await ownership.record(run.id, tabId, post.value);
+
+    const verdict = await verify(req.action, effect.value, post.value, pre);
+    const handle = handleOf(req.action);
+    await journal.append(run.id, 'action.observed', tabId, {
+      verb: req.action.verb, handle, tier, verified: verdict.verified,
+      check: verdict.check, evidence: verdict.evidence, failureCause: verdict.failureCause,
+    });
+
+    return {
+      phase: 'done' as const, verb: req.action.verb, tier, verified: verdict.verified,
+      check: verdict.check, evidence: verdict.evidence, failureCause: verdict.failureCause,
+      elapsedMs: effect.value.elapsedMs,
+    };
+  }
+
+  async function runAgentAct(tabId: number, instruction: string) {
+    const run = await ensureRun(tabId);
+    if (!run) return { phase: 'refused' as const, code: 'TAB_GONE' as const, message: formatRefusal('TAB_GONE') };
+
+    const pre = await domBackend.perceive(tabId, run.id, {});
+    if (!pre.ok) {
+      return {
+        phase: 'refused' as const, code: 'OUT_OF_SCOPE' as const,
+        message: 'Could not read the page — is Pro Prompt granted on it, and is it open in this tab?',
+      };
+    }
+    await ownership.record(run.id, tabId, pre.value);
+
+    const intent = resolveIntent(instruction, pre.value);
+    if (intent.kind === 'unmatched') return { phase: 'unmatched' as const, message: UNMATCHED_COPY };
+    if (intent.kind === 'ambiguous') {
+      return {
+        phase: 'ambiguous' as const,
+        candidates: intent.candidates.map((c) => ({ handle: c.handle, name: c.name, role: c.role, regionId: c.regionId })),
+      };
+    }
+
+    const rawReq = {
+      requestId: crypto.randomUUID(), runId: run.id, tabId, epoch: pre.value.epoch,
+      action: intent.action, reason: instruction,
+    };
+    const validated = ActionRequestSchema.safeParse(rawReq);
+    if (!validated.success) {
+      return { phase: 'refused' as const, code: 'MALFORMED_ACTION' as const, message: formatRefusal('MALFORMED_ACTION') };
+    }
+    const req = validated.data;
+
+    await journal.append(run.id, 'action.requested', tabId, { verb: req.action.verb, reason: instruction });
+
+    const decision = await gate(req);
+    if (decision.needsApproval) {
+      pendingApprovals.set(req.requestId, { runId: run.id, tabId, req, tier: decision.tier, preSnapshot: pre.value });
+      await db.runs.update(run.id, { state: 'awaiting_approval' });
+      return { phase: 'needs_approval' as const, requestId: req.requestId, prompt: decision.prompt };
+    }
+    if (!decision.permitted) {
+      return { phase: 'refused' as const, code: decision.code, message: formatRefusal(decision.code, { origin: run.origin }) };
+    }
+
+    if (PERCEPTION_VERBS.has(req.action.verb)) {
+      return performRead(run, tabId, req);
+    }
+    return performAction(run, tabId, req, pre.value, decision.tier);
+  }
 
   // ════════════════════════════════════════
   // Message Router
@@ -346,6 +528,84 @@ export default defineBackground(() => {
       case 'OPEN_DASHBOARD': {
         chrome.tabs.create({ url: chrome.runtime.getURL('/options.html') });
         return { status: 'success' };
+      }
+
+      // ── Phase 3: the Copilot panel ──
+      case 'AGENT_ACT': {
+        const { tabId, instruction } = message.payload as { tabId: number; instruction: string };
+        const data = await runAgentAct(tabId, instruction);
+        return { status: 'success', data };
+      }
+
+      case 'AGENT_APPROVAL_RESPONSE': {
+        const { requestId, approve } = message.payload as { requestId: string; approve: boolean };
+        const pending = pendingApprovals.get(requestId);
+        if (!pending) return { status: 'error', message: 'UNKNOWN_APPROVAL' };
+        pendingApprovals.delete(requestId);
+        const { runId, tabId, req, tier, preSnapshot } = pending;
+
+        const run = await db.runs.get(runId);
+        if (!run?.id) return { status: 'error', message: 'UNKNOWN_RUN' };
+
+        if (!approve) {
+          await journal.append(runId, 'approval.denied', tabId, { requestId });
+          const t = transition(run.state, 'running');
+          if (t.ok) await db.runs.update(runId, { state: t.value });
+          return { status: 'success', data: { phase: 'denied' } };
+        }
+
+        await journal.append(runId, 'approval.granted', tabId, { requestId });
+        const t = transition(run.state, 'running');
+        if (t.ok) await db.runs.update(runId, { state: t.value });
+        // The ORIGINAL pre-approval snapshot and epoch are reused, never
+        // re-fetched here — a fresh perceive() would bump the content
+        // script's epoch counter and make req.epoch stale before it is
+        // ever dispatched (lib/page/registry.ts's beginEpoch() resets on
+        // every structure read).
+        const data = await performAction({ ...run, id: runId }, tabId, req, preSnapshot, tier);
+        return { status: 'success', data };
+      }
+
+      case 'AGENT_STOP': {
+        const { runId } = message.payload as { runId: number };
+        // The stop flag is written FIRST and unconditionally — it is the
+        // actual enforcement mechanism (§10), read by the gate and by the
+        // content-script actuator. The state transition below is
+        // best-effort bookkeeping on top of it.
+        await chrome.storage.session.set({ [`stop:${runId}`]: true });
+        const run = await db.runs.get(runId);
+        if (run) {
+          const t = transition(run.state, 'stopped');
+          if (t.ok) await db.runs.update(runId, { state: t.value, endedAt: Date.now() });
+        }
+        return { status: 'success' };
+      }
+
+      case 'AGENT_GET_RUN_EVENTS': {
+        const { runId } = message.payload as { runId: number };
+        return { status: 'success', data: await journal.query(runId) };
+      }
+
+      case 'AGENT_LIST_RUNS': {
+        const runs = await db.runs.orderBy('startedAt').reverse().limit(20).toArray();
+        return { status: 'success', data: runs };
+      }
+
+      // [Phase 3 §15, e2e build only] compiled out of every other build —
+      // see wxt.config.ts's __PP_E2E__ comment and AgentBenchGateRequest's.
+      case 'AGENT_BENCH_GATE': {
+        if (!__PP_E2E__) return { status: 'error', message: 'NOT_AVAILABLE' };
+        const { tabId } = message.payload as { tabId: number };
+        const run = await ensureRun(tabId);
+        if (!run) return { status: 'error', message: 'TAB_GONE' };
+        const req = {
+          requestId: crypto.randomUUID(), runId: run.id, tabId,
+          epoch: 1, action: { verb: 'read_page' as const }, reason: 'bench',
+        };
+        const validated = ActionRequestSchema.safeParse(req);
+        if (!validated.success) return { status: 'error', message: 'MALFORMED_ACTION' };
+        const decision = await gate(validated.data);
+        return { status: 'success', data: { decision } };
       }
 
       default:

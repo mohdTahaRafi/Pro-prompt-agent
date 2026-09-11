@@ -52,7 +52,7 @@ class MemoryStorageArea {
   __dump(): Record<string, unknown> { return Object.fromEntries(this.store); }
 }
 
-function makeStorageArea() {
+function makeStorageArea(opts: { withAccessLevel?: boolean } = {}) {
   const area = new MemoryStorageArea();
   // Support both the promise style (await chrome.storage.local.get(...))
   // and the callback style (chrome.storage.local.get(..., cb)) — the
@@ -77,7 +77,11 @@ function makeStorageArea() {
     if (callback) { p.then(callback); return; }
     return p;
   };
-  return { get, set, remove, clear, __dump: () => area.__dump() };
+  const base = { get, set, remove, clear, __dump: () => area.__dump() };
+  // Only chrome.storage.session carries setAccessLevel — [Phase 3]
+  // background.ts calls it once at startup so content scripts can read the
+  // stop flag; the double just needs to exist and resolve.
+  return opts.withAccessLevel ? { ...base, setAccessLevel: vi.fn(async () => {}) } : base;
 }
 
 function makePermissionsDouble() {
@@ -154,21 +158,49 @@ function makeRuntimeDouble() {
   };
 }
 
+/**
+ * [Phase 3] Tab registry backing chrome.tabs.get/update/goBack/goForward —
+ * the gate's tab-identity check (§4.2 check 2) and dom-backend's navigation
+ * verbs (§6.3) both need a tab double that actually holds state across
+ * calls, not just a resolved-empty stub. __setTab/__removeTab are the
+ * test-only seams; real code only ever calls the chrome.tabs.* methods.
+ */
+function makeTabsDouble() {
+  const tabs = new Map<number, { id: number; url?: string }>();
+  return {
+    query: vi.fn(async () => []),
+    sendMessage: vi.fn(async () => undefined),
+    create: vi.fn(async () => ({ id: 1 })),
+    get: vi.fn(async (tabId: number) => {
+      const tab = tabs.get(tabId);
+      if (!tab) throw new Error(`No tab with id: ${tabId}`);
+      return tab;
+    }),
+    update: vi.fn(async (tabId: number, props: { url?: string }) => {
+      const tab = tabs.get(tabId);
+      if (!tab) throw new Error(`No tab with id: ${tabId}`);
+      if (props.url) tab.url = props.url;
+      return tab;
+    }),
+    goBack: vi.fn(async () => {}),
+    goForward: vi.fn(async () => {}),
+    __setTab(id: number, url: string) { tabs.set(id, { id, url }); },
+    __removeTab(id: number) { tabs.delete(id); },
+    __tabs: tabs,
+  };
+}
+
 export function installChromeDouble() {
   const chromeDouble = {
     storage: {
       local: makeStorageArea(),
-      session: makeStorageArea(),
+      session: makeStorageArea({ withAccessLevel: true }),
       sync: makeStorageArea(),
     },
     permissions: makePermissionsDouble(),
     scripting: makeScriptingDouble(),
     runtime: makeRuntimeDouble(),
-    tabs: {
-      query: vi.fn(async () => []),
-      sendMessage: vi.fn(async () => undefined),
-      create: vi.fn(async () => ({ id: 1 })),
-    },
+    tabs: makeTabsDouble(),
     alarms: {
       create: vi.fn(),
       onAlarm: { addListener: vi.fn() },

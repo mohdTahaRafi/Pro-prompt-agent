@@ -36,6 +36,18 @@ export default defineConfig({
   ...(isE2E ? { outDir: '.output/e2e' } : {}),   // → .output/e2e/chrome-mv3
   ...(isCorpusCollect ? { outDir: '.output/corpus-collect' } : {}),
   modules: ['@wxt-dev/module-react'],
+  // [Phase 3 §15] a compile-time flag, not a runtime env read — Vite's
+  // `define` does a literal text substitution, so `if (!__PP_E2E__)` in
+  // entrypoints/background.ts becomes `if (!false)` in the production
+  // bundle and the minifier drops the dead branch entirely. Gates
+  // AGENT_BENCH_GATE, a message type that calls lib/policy/gate.ts
+  // directly (skipping perceive/resolveIntent) so tests/e2e/gate-wake.bench.ts
+  // can time the gate in isolation from perception, per the "time a gate
+  // call" methodology in Docs/planning/phase_3_gate_actuation_verification.md
+  // §15. Same never-ships-in-production guarantee as the e2e-only `tabs`
+  // permission above, verified the same way (tests/unit/manifest.spec.ts
+  // and a grep of the production bundle).
+  vite: () => ({ define: { __PP_E2E__: JSON.stringify(isE2E) } }),
   manifest: {
     name: 'Pro Prompt',
     version: '1.0.0',
@@ -50,6 +62,14 @@ export default defineConfig({
       'offscreen',    // the agent runtime and every inference engine
       'sidePanel',    // the cockpit (Phase 5 supplies sidepanel.html)
       'activeTab',    // the popup's "grant this site" flow needs the current tab's URL
+      // [Phase 3, e2e build only] tests/e2e/scope.spec.ts needs to resolve a
+      // tabId for a tab on a DELIBERATELY ungranted origin (the property
+      // under test), and chrome.tabs.query only reports tabs the extension
+      // has host access to without the `tabs` permission — none of the
+      // product's own code uses chrome.tabs.query by url, so this never
+      // ships in production. Same sidestep pattern as the host_permissions
+      // block below.
+      ...(isE2E ? ['tabs' as const] : []),
     ],
     optional_host_permissions: ['*://*/*'],
     host_permissions: [

@@ -3,9 +3,11 @@
  *
  * [Phase 1] Created now so the Dexie v2 schema (lib/db/dexie-db.ts) and later
  * phases write into a schema that already exists rather than migrating again.
- * Nothing in this phase creates a RunRecord — DEFAULT_CAPABILITIES is the
- * empty verb set (lib/policy/scope.ts) and there is no planner, no gate, no
- * loop. See Docs/planning/phase_1_foundation_preconditions.md §3.3.
+ * [Phase 3] narrows RunEventKind from `string` to the real event vocabulary
+ * (§8) and gives RunRecord its first real callers — the gate re-derives its
+ * context from this row on every action.
+ * See Docs/planning/phase_1_foundation_preconditions.md §3.3,
+ * Docs/planning/phase_3_gate_actuation_verification.md §8.
  */
 
 import type { Verb } from '@lib/schemas/action.schema';
@@ -49,7 +51,22 @@ export interface RunRecord {
   profileId?: number;                  // (Phase 8) fact attribution
 }
 
-export type RunEventKind = string;   // [Phase 3+: narrowed to the real event vocabulary]
+// [Phase 3 §8] The complete journal vocabulary this phase writes. Later
+// phases (recovery, planning, multi-tab) add kinds; none of Phase 3's own
+// code appends anything outside this set — lib/agent/journal.ts is the only
+// writer of runEvents (task 3.11), so this union is enforceable at the call
+// site rather than merely documentary.
+export type RunEventKind =
+  | 'run.created'
+  | 'action.requested'
+  | 'action.permitted'
+  | 'action.refused'
+  | 'action.dispatched'
+  | 'action.observed'
+  | 'approval.requested'
+  | 'approval.granted'
+  | 'approval.denied'
+  | 'run.completed';
 
 export interface RunEvent {
   id?: number;

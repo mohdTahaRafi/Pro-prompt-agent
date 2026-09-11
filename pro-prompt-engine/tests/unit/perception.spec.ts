@@ -115,6 +115,28 @@ describe('buildSnapshot — shadow roots and iframes (§7.1, task 2.7)', () => {
   });
 });
 
+describe('buildSnapshot — contenteditable valueShape (§7.6, Phase 3 correction)', () => {
+  // Found by tests/e2e/copilot.bench.ts's 40-action sweep: without this,
+  // every contenteditable region's valueShape is undefined forever, so
+  // lib/page/verifier.ts's `type` case never sees a successful write land
+  // — a false WRITE_REJECTED on every edit. lib/page/actuator.ts's own
+  // readValue() already reads innerText/textContent for isContentEditable;
+  // computeValueShape() must produce the same representation.
+  it('reports the current text of a contenteditable region, not undefined', async () => {
+    document.body.innerHTML = `<div contenteditable="true" role="textbox" aria-label="Message">Hello there</div>`;
+    const snap = await snapshot();
+    const el = snap.elements.find((e) => e.role === 'textbox' && e.name === 'Message');
+    expect(el?.valueShape).toBe('Hello there');
+  });
+
+  it('reports "empty" for a blank contenteditable region', async () => {
+    document.body.innerHTML = `<div contenteditable="true" role="textbox" aria-label="Message"></div>`;
+    const snap = await snapshot();
+    const el = snap.elements.find((e) => e.role === 'textbox' && e.name === 'Message');
+    expect(el?.valueShape).toBe('empty');
+  });
+});
+
 describe('buildSnapshot — sensitive exclusion wired in before any value read (§7.1, task 2.8)', () => {
   it('a password field is excluded: no descriptor, counted once', async () => {
     document.body.innerHTML = `

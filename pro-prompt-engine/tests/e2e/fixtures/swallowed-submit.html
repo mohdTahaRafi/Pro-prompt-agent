@@ -1,0 +1,24 @@
+<!doctype html>
+<!--
+  Phase 3 §7.2 — the false-confirmation gate's fixture. The submit button's
+  click is deliberately swallowed: preventDefault(), no navigation, no
+  visible change, no error message. tests/e2e/false-confirm.spec.ts asserts
+  that lib/page/verifier.ts NEVER reports `confirmed` for this click — the
+  one zero-tolerance CI gate in §3.8.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Swallowed submit fixture</title></head>
+<body>
+  <h1>Apply</h1>
+  <form id="apply" aria-label="Application form">
+    <label for="full-name">Full name</label>
+    <input id="full-name" name="full_name">
+    <button type="submit" id="submit-btn">Submit application</button>
+  </form>
+  <script>
+    document.getElementById('apply').addEventListener('submit', (e) => {
+      e.preventDefault();   // swallowed: nothing observably happens
+    });
+  </script>
+</body>
+</html>

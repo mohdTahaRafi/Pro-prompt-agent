@@ -166,6 +166,39 @@ export const GetTabIdRequest = reqNoPayload('GET_TAB_ID');
 // every sitePolicy row Chrome still actually holds the permission for.
 export const GetActiveGrantsRequest = reqNoPayload('GET_ACTIVE_GRANTS');
 
+// [Phase 3 §11] the Copilot panel — one free-typed instruction against one
+// selected, granted tab. The whole perceive → resolve → gate → act →
+// settle → verify → journal pipeline runs in the service worker; the panel
+// only ever sees the outcome.
+export const AgentActRequest = req('AGENT_ACT', z.object({
+  tabId: z.number(),
+  instruction: z.string().min(1).max(500),
+}));
+
+// A pending Always-tier approval, answered from the panel's Approve/Reject
+// buttons. The token is the original request's requestId — an approval
+// granted for one action can never be replayed onto another (§9).
+export const AgentApprovalResponseRequest = req('AGENT_APPROVAL_RESPONSE', z.object({
+  requestId: z.string().uuid(),
+  approve: z.boolean(),
+}));
+
+export const AgentStopRequest = req('AGENT_STOP', z.object({ runId: z.number().int() }));
+
+export const AgentGetRunEventsRequest = req('AGENT_GET_RUN_EVENTS', z.object({ runId: z.number().int() }));
+
+export const AgentListRunsRequest = reqNoPayload('AGENT_LIST_RUNS');
+
+// [Phase 3 §15, e2e-build behavior only — see wxt.config.ts's __PP_E2E__
+// comment] tests/e2e/gate-wake.bench.ts's cold-SW-wake → gate-decision
+// benchmark. Calls lib/policy/gate.ts directly against a real (or
+// just-created) run, skipping the perceive()/resolveIntent() that AGENT_ACT
+// always does first — those measure Phase 2's perception budget, not the
+// gate's. The schema is declared unconditionally like every other message
+// type; only entrypoints/background.ts's handler is compiled out in
+// production builds.
+export const AgentBenchGateRequest = req('AGENT_BENCH_GATE', z.object({ tabId: z.number().int() }));
+
 export const ExtensionRequest = z.discriminatedUnion('type', [
   PingRequest, InferenceRequest, ScoreRequest, RefactorRequest, GenerateRequest,
   GetProfileRequest, SetProfileRequest, GetAllProfilesRequest, SetActiveProfileRequest, DeleteProfileRequest,
@@ -175,6 +208,8 @@ export const ExtensionRequest = z.discriminatedUnion('type', [
   CheckPiiRequest, GetProviderStatusRequest, SetActiveProviderRequest,
   GetPromptHistoryRequest, OpenDashboardRequest, ModelStateChangedRequest,
   GrantOriginRequest, RevokeOriginRequest, GetTabIdRequest, GetActiveGrantsRequest,
+  AgentActRequest, AgentApprovalResponseRequest, AgentStopRequest,
+  AgentGetRunEventsRequest, AgentListRunsRequest, AgentBenchGateRequest,
 ]);
 
 export type ExtensionRequestType = z.infer<typeof ExtensionRequest>;

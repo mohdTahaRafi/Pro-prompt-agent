@@ -18,7 +18,7 @@ function send<T = any>(type: string, payload?: unknown): Promise<T> {
   });
 }
 
-type View = 'profiles' | 'snippets' | 'library' | 'analytics' | 'context' | 'perception' | 'settings';
+type View = 'profiles' | 'snippets' | 'library' | 'analytics' | 'context' | 'perception' | 'copilot' | 'settings';
 
 const NAV: { key: View; label: string; icon: string }[] = [
   { key: 'profiles', label: 'Profiles', icon: '👤' },
@@ -26,9 +26,12 @@ const NAV: { key: View; label: string; icon: string }[] = [
   { key: 'library', label: 'Prompt Library', icon: '📚' },
   { key: 'analytics', label: 'Analytics', icon: '📊' },
   { key: 'context', label: 'Context Lab', icon: '🧪' },
-  // [Phase 2 §9] the demonstrable artifact of this phase — not the side
+  // [Phase 2 §9] the demonstrable artifact of THAT phase — not the side
   // panel, which does not exist until Phase 5.
   { key: 'perception', label: 'Perception', icon: '👁️' },
+  // [Phase 3 §11] the demonstrable artifact of THIS phase: one action,
+  // named in plain terms, gated, acted, verified, journaled.
+  { key: 'copilot', label: 'Copilot', icon: '🤖' },
   { key: 'settings', label: 'Models & Settings', icon: '🧠' },
 ];
 
@@ -65,6 +68,7 @@ export default function App() {
         {view === 'analytics' && <AnalyticsView />}
         {view === 'context' && <ContextLabView />}
         {view === 'perception' && <PerceptionView />}
+        {view === 'copilot' && <CopilotView />}
         {view === 'settings' && <SettingsView />}
       </div></main>
     </div>
@@ -813,6 +817,236 @@ function StatTile({ label, value }: { label: string; value: string }) {
     <div className="card p-3">
       <div className="text-xs text-text-muted uppercase tracking-wide mb-1">{label}</div>
       <div className="text-body font-semibold">{value}</div>
+    </div>
+  );
+}
+
+// ═══ Copilot — Phase 3 §11 ═══
+//
+// The demonstrable artifact of this phase (§13's Milestone Definition): a
+// user picks a granted tab, types one instruction in plain terms, and
+// watches it move through requested -> permitted-or-refused -> acted ->
+// settled -> confirmed, or hold for approval and name the consequence.
+// lib/agent/intent.ts (THROWAWAY, deleted in Phase 5) resolves the
+// instruction; everything after that — the gate, the actuator, the
+// verifier, the journal — runs in the service worker, reached only through
+// the AGENT_* messages entrypoints/background.ts's router answers.
+
+interface CopilotCandidate { handle: string; name: string; role: string; regionId: string }
+type CopilotResult =
+  | { phase: 'unmatched'; message: string }
+  | { phase: 'ambiguous'; candidates: CopilotCandidate[] }
+  | { phase: 'refused'; code: string; message: string }
+  | { phase: 'needs_approval'; requestId: string; prompt: { action: string; target: string; site: string; consequence: string; tier: string } }
+  | { phase: 'done'; verb: string; tier?: string; verified: string; check: string; evidence?: { before?: string; after?: string; detail?: string }; failureCause?: string; elapsedMs: number }
+  | { phase: 'failed'; failureCause: string }
+  | { phase: 'denied' };
+
+function CopilotView() {
+  const [origins, setOrigins] = useState<string[]>([]);
+  const [origin, setOrigin] = useState<string>('');
+  const [tabId, setTabId] = useState<number | null>(null);
+  const [instruction, setInstruction] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<CopilotResult | null>(null);
+  const [runId, setRunId] = useState<number | null>(null);
+  const [events, setEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    send<string[]>('GET_ACTIVE_GRANTS').then((list) => {
+      setOrigins(list || []);
+      if (list?.[0]) setOrigin(list[0]);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!origin) { setTabId(null); return; }
+    chrome.tabs.query({ url: `${origin}/*` }, (tabs) => setTabId(tabs[0]?.id ?? null));
+  }, [origin]);
+
+  async function refreshRun() {
+    if (!tabId) return;
+    try {
+      const runs = await send<any[]>('AGENT_LIST_RUNS');
+      const run = runs?.find((r) => r.roster?.[0] === tabId);
+      if (run?.id) {
+        setRunId(run.id);
+        const evs = await send<any[]>('AGENT_GET_RUN_EVENTS', { runId: run.id });
+        setEvents(evs ?? []);
+      }
+    } catch { /* best-effort — the journal view is a convenience, not load-bearing */ }
+  }
+
+  async function go() {
+    if (!tabId || !instruction.trim()) return;
+    setBusy(true); setError(''); setResult(null);
+    try {
+      const data = await send<CopilotResult>('AGENT_ACT', { tabId, instruction: instruction.trim() });
+      setResult(data);
+      await refreshRun();
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    }
+    setBusy(false);
+  }
+
+  async function respond(requestId: string, approve: boolean) {
+    setBusy(true); setError('');
+    try {
+      const data = await send<CopilotResult>('AGENT_APPROVAL_RESPONSE', { requestId, approve });
+      setResult(data);
+      await refreshRun();
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    }
+    setBusy(false);
+  }
+
+  async function stop() {
+    if (!runId) return;
+    setBusy(true);
+    try {
+      await send('AGENT_STOP', { runId });
+      await refreshRun();
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="text-h1 font-bold">Copilot</h2>
+        <p className="text-body text-text-secondary mt-1">
+          Name one action in plain terms — "click Continue", "type Mohd Taha into the full name field".
+          No planner, no plan: this one instruction is gated, acted, verified, and journaled.
+        </p>
+      </div>
+
+      <div className="card p-5 mb-4 flex items-center gap-3 flex-wrap">
+        <label className="text-small text-text-muted">Granted origin</label>
+        <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="input-field">
+          {origins.length === 0 && <option value="">No granted origins</option>}
+          {origins.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <span className="text-xs text-text-muted">{tabId ? `tab ${tabId}` : origin ? 'no open tab for this origin' : ''}</span>
+        {runId && <span className="text-xs text-text-muted">run #{runId}</span>}
+      </div>
+
+      <div className="card p-5 mb-4 flex items-center gap-3">
+        <input
+          value={instruction}
+          onChange={(e) => setInstruction(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !busy) go(); }}
+          placeholder='click Continue / type "Mohd Taha" into the full name field / go back'
+          className="input-field flex-1"
+        />
+        <button onClick={go} disabled={!tabId || !instruction.trim() || busy} className="btn-primary px-5 py-2 disabled:opacity-50">
+          {busy ? '⏳' : '▶️'} Go
+        </button>
+        <button onClick={stop} disabled={!runId || busy} className="btn-secondary px-4 py-2 border border-border-default disabled:opacity-50">
+          ⏹️ Stop
+        </button>
+      </div>
+
+      {error && <div className="card p-3 mb-4 border border-accent-red/40 text-accent-red text-small">{error}</div>}
+
+      {result && (
+        <div className="card p-4 mb-4">
+          {result.phase === 'unmatched' && (
+            <p className="text-small text-text-secondary">{result.message}</p>
+          )}
+
+          {result.phase === 'ambiguous' && (
+            <>
+              <h3 className="text-body font-semibold mb-2">Which one did you mean?</h3>
+              <p className="text-small text-text-secondary mb-2">
+                More than one element matched — Pro Prompt never guesses.
+              </p>
+              <ul className="text-small space-y-1">
+                {result.candidates.map((c) => (
+                  <li key={c.handle} className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-text-muted">{c.handle}</span>
+                    <span>{c.role} "{c.name}"</span>
+                    <span className="text-xs text-text-muted">({c.regionId})</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {result.phase === 'refused' && (
+            <div className="text-accent-red">
+              <span className="font-mono text-xs mr-2">{result.code}</span>
+              <span className="text-small">{result.message}</span>
+            </div>
+          )}
+
+          {result.phase === 'needs_approval' && (
+            <>
+              <h3 className="text-body font-semibold mb-1">{result.prompt.action}</h3>
+              <p className="text-small text-text-muted mb-2">on {result.prompt.site}</p>
+              <p className="text-small mb-3">{result.prompt.consequence}</p>
+              <div className="flex gap-2">
+                <button onClick={() => respond(result.requestId, true)} disabled={busy} className="btn-primary px-4 py-2 disabled:opacity-50">
+                  ✅ Approve
+                </button>
+                <button onClick={() => respond(result.requestId, false)} disabled={busy} className="btn-secondary px-4 py-2 border border-border-default disabled:opacity-50">
+                  ❌ Reject
+                </button>
+              </div>
+            </>
+          )}
+
+          {result.phase === 'denied' && (
+            <p className="text-small text-text-secondary">Rejected. The page is untouched.</p>
+          )}
+
+          {result.phase === 'done' && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatTile label="Verb" value={result.verb} />
+              <StatTile label="Tier" value={result.tier ?? '—'} />
+              <StatTile label="Verified"
+                value={result.verified === 'confirmed' ? '✅ confirmed' : result.verified === 'failed' ? '❌ failed' : '⚠️ unconfirmed'} />
+              <StatTile label="Check" value={result.check} />
+              <StatTile label="Elapsed" value={`${result.elapsedMs} ms`} />
+              {result.evidence?.detail && <StatTile label="Detail" value={result.evidence.detail} />}
+              {result.evidence?.before !== undefined && <StatTile label="Before" value={String(result.evidence.before)} />}
+              {result.evidence?.after !== undefined && <StatTile label="After" value={String(result.evidence.after)} />}
+            </div>
+          )}
+
+          {result.phase === 'failed' && (
+            <div className="text-accent-red text-small">Could not perform that action: {result.failureCause}</div>
+          )}
+        </div>
+      )}
+
+      {events.length > 0 && (
+        <div className="card p-4 mb-4 overflow-x-auto">
+          <h3 className="text-body font-semibold mb-3">Run journal — run #{runId}</h3>
+          <table className="w-full text-small">
+            <thead>
+              <tr className="text-left text-text-muted border-b border-border-default">
+                <th className="py-1 pr-3">Seq</th>
+                <th className="py-1 pr-3">Kind</th>
+                <th className="py-1 pr-3">Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((e) => (
+                <tr key={e.id ?? e.seq} className="border-b border-border-default/50">
+                  <td className="py-1 pr-3 font-mono">{e.seq}</td>
+                  <td className="py-1 pr-3">{e.kind}</td>
+                  <td className="py-1 pr-3 text-text-muted font-mono text-xs">{JSON.stringify(e.data)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

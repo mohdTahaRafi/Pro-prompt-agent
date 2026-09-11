@@ -36,8 +36,12 @@ describe('grantOrigin / revokeOrigin / isGranted', () => {
 
     const policy = await db.sitePolicy.get(ORIGIN);
     expect(policy).toBeDefined();
-    // [Phase 2 §11 task 2.15] widened from [] to the four perception verbs.
-    expect(policy!.capabilities).toEqual(['read_page', 'read_structure', 'read_element', 'wait_for_settle']);
+    // [Phase 3 §12 task 3.15] widened from the four perception verbs to the
+    // eleven verbs this phase implements.
+    expect(policy!.capabilities).toEqual([
+      'read_page', 'read_structure', 'read_element', 'wait_for_settle',
+      'scroll', 'click', 'type', 'select', 'navigate', 'history_back', 'history_forward',
+    ]);
     expect(policy!.defaultMode).toBe('supervised');
     expect(policy!.revokedAt).toBeUndefined();
   });

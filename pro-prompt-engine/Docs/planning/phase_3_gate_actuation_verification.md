@@ -193,6 +193,8 @@ export async function gate(req: ActionRequest): Promise<ActionDecision> {
 
 **Budget and goal-anchor checks are absent from this phase and their positions are reserved.** `goal-anchor.ts` needs a goal, which needs a plan, which is Phase 5. `budget.ts` needs a multi-action run. Both slot in at check 5.5 and 6.5 respectively. **[Phase 5.]**
 
+**Implementation addition:** §6.3's "Navigating" section states that "the gate confirms the destination origin is in scope before dispatch" for `navigate`, "in addition to the source-tab check" — but the eight-check pseudocode above never actually adds that check anywhere. The implementation adds it as check "3+", immediately after check 5's capability check (once the action is known to be schema-valid and actually `navigate`, since only then is a destination URL available to resolve): the destination's origin must be in `run.scope` and still `isGranted()`, or the request is refused `OUT_OF_SCOPE` against the destination. `tests/unit/gate.spec.ts` and `tests/e2e/actuation.spec.ts` cover it.
+
 ### 4.3 Refusal codes
 
 | Code | Meaning | Surfaced to the user as |
@@ -265,6 +267,8 @@ export function transition(from: RunState, to: RunState): Result<RunState, 'ILLE
 
 Eleven states, ~30 flat edges, shared verbatim by the gate and (from Phase 5) the Supervisor. `running → running` is legal and is the normal case: an action completes and the run stays running. The four terminal states have empty transition lists, which is what makes "a completed run cannot be resurrected" a table lookup rather than a convention.
 
+**Implementation correction (task 3.2):** counting the table above literally gives **31** legal edges (5+3+9+4+4+3+3), not the 30 stated in §12's task 3.2 acceptance row, and correspondingly **90** illegal edges (11×11 − 31), not 91. This was an arithmetic slip in the original draft, not a deliberate decision; `tests/unit/run-state.spec.ts` asserts the actual, dynamically-computed counts (31/90) rather than the stated ones, and this note is the record of that correction per the repo's spec-drift rule (amend and say what changed, rather than silently diverging).
+
 ### 4.6 Defence in depth on the sensitive check
 
 `sensitive.ts` already excluded these fields at snapshot construction (Phase 2 §7.1), so a handle for one does not exist and check 4 would refuse it as `UNKNOWN_HANDLE`. The gate checks **again** at check 5 via `never-rules.ts`, against the ledger's stored descriptor.
@@ -307,6 +311,10 @@ export function classifyTier(
   }
 }
 ```
+
+**Implementation correction:** line 289 above, taken literally, makes `MUTATING_VERBS.has(action.verb)` return `'never'` for every mutating verb — including `click` — on a sensitive origin, with no override path (§5.4's own semantics for `'never'`). That contradicts §5.4's closing paragraph in this same document ("a run on gov.uk cannot fill a form **without approval** on every mutating action" — friction, not impossibility) and the J-1 running example used throughout the concept and PRD documents, where the agent is expected to be able to fill a government form once the user approves each step. `'never'` is reserved for the three `NEVER_KINDS` fields, where there genuinely is no recoverable path.
+
+The implementation (`lib/policy/tiers.ts`, `lib/policy/never-rules.ts`) drops this line and replaces it with a narrower, correctly-scoped escalation: `SENSITIVE_ORIGIN_ALWAYS_VERBS = new Set(['type', 'select'])` — the two verbs with no target-level read-only signal of their own to lean on — return `'always'` (not `'never'`) on a sensitive origin. `click` keeps its own sensitive-origin handling in `classifyClick` (§5.2 step 3, already `'always'`, unchanged); `navigate`/`history_back`/`history_forward`/`scroll` are unaffected by origin sensitivity, matching their fixed tiers in §3's vocabulary table, which state no such exception. `tests/unit/tiers.spec.ts` and `tests/unit/never-rules.spec.ts` assert the corrected behaviour.
 
 ### 5.2 `classifyClick` — the whole difficulty in one function
 
@@ -418,6 +426,8 @@ export interface ActEffect {
 ```
 
 `ActEffect` records what was dispatched, never whether it worked. Keeping "I clicked" and "it took effect" as separate values in separate modules is the whole of §3.7.4, and merging them is how an agent starts reporting successes it did not observe.
+
+**Implementation correction:** `act()`/`perceive()` above take `(tabId, action, epoch)` / `(tabId, req)`. Neither the stop flag (`stop:${runId}`, §10) nor the ownership ledger's `ownership.record()` call can be keyed without knowing WHICH run is acting through a tab — and a tab can outlive the run currently driving it, so `tabId` alone is not enough. Both methods, and `lib/page/actuator.ts`'s `actuate()`, are widened to take `runId` explicitly. `ActEffect` also gains an optional `focusFailed?: boolean`, set by `doType` (§6.3) when focus could not be confirmed before writing — used in the doc's own `doType` snippet but never added to the interface it returns.
 
 ### 6.2 `dom-backend.ts`
 
@@ -603,6 +613,8 @@ export interface VerificationResult {
 
 **Three values, by design. There is no fourth for "we assume so"** (PR-VER-7, PP-5).
 
+**Implementation correction — a real bug this caught, not a stylistic one:** the code below (and its `type` case in particular) reads `post.elements.find(e => e.handle === action.handle)` to find "the same element" in the post-action snapshot. That is wrong. `lib/page/registry.ts`'s `beginEpoch()` resets the handle counter to `e0` on every structure read, and `post` is always taken from a FRESH epoch — `action.handle` (allocated against `pre`'s epoch) is not a valid key into `post.elements` at all; it can silently collide with whatever unrelated element the new epoch's walk happened to allocate the same string to. This was caught by `tests/e2e/actuation.spec.ts`'s real-Chrome react-form test, which reported a correct DOM write as `verified: 'failed'` because the post-snapshot read compared against the wrong element. The implementation adds `correspondingElement(pre, post, handle)` to `lib/page/verifier.ts`: it looks up the handle's descriptor in `pre` (valid, since `pre` shares the request's epoch), then finds its counterpart in `post` by `(role, name, formId)` — the same identity `negativeCheck` already used — falling back to same-pool ordinal when more than one post-snapshot element shares that shape. Every handle-keyed lookup in `verify()` (`type`, `select`, `click`'s disappearance check, `scroll`'s handle-target case) goes through it.
+
 ```ts
 export async function verify(
   action: Action, effect: ActEffect, post: PerceptionSnapshot, pre: PerceptionSnapshot,
@@ -708,6 +720,8 @@ The demonstrable product. A **Copilot** panel in the options page — the side p
 
 The user picks a granted tab, types an instruction, and presses Go. `lib/agent/intent.ts` maps the text to an `ActionRequest` **deterministically, with no model**:
 
+**Implementation note (orchestration, unspecified by this document):** this document specifies the gate, the actuator and the verifier in isolation but never spells out the service-worker orchestration that wires perceive → resolve → gate → act → verify → journal together end to end, nor the `AGENT_ACT`/`AGENT_APPROVAL_RESPONSE`/`AGENT_STOP`/`AGENT_GET_RUN_EVENTS`/`AGENT_LIST_RUNS` message contract the Copilot panel actually calls. `entrypoints/background.ts` implements this; one property worth calling out explicitly: `read_page`/`read_structure`/`read_element`/`wait_for_settle` are Phase 2's perception verbs, not actuation, and are answered by `agent.content.ts`'s existing `PerceptionRequest` listener directly — never routed through `lib/page/actuator.ts`'s `ACTUATE` handler, which has no case for them and would refuse `TARGET_MISSING` if they were. They are not mutating, so `lib/page/verifier.ts` never runs for them either; a read's dispatch and its data ARE the whole outcome.
+
 ```ts
 const PATTERNS: Array<[RegExp, (m: RegExpMatchArray, s: PerceptionSnapshot) => Action | null]> = [
   [/^click (?:the )?["“]?(.+?)["”]?(?: button| link)?$/i,
@@ -728,6 +742,8 @@ const PATTERNS: Array<[RegExp, (m: RegExpMatchArray, s: PerceptionSnapshot) => A
 Unmatched text gets *"I understood that as an instruction I don't have a way to perform. I can click, type, select, scroll, navigate, go back and forward, and read."* — no model, no guess.
 
 This resolver is **throwaway code**. Phase 5 replaces it with the planner and the step resolver, and this file is deleted then. It is labelled as such in its own header comment.
+
+**Implementation correction:** §12's task 3.7 row says the actuator implements "all six verbs." The content-script actuator (`lib/page/actuator.ts`) implements exactly **four** DOM-touching, handle-or-viewport verbs: `scroll`, `click`, `type`, `select`. `navigate`, `history_back` and `history_forward` — the other three of Phase 3's seven interaction/navigation verbs — are dispatched from the service worker instead (§6.3 "Navigating"), by design, since a content-script-initiated navigation would destroy the script issuing it before it could report. "Six" was a miscount in the original draft; the actuator's real scope is four verbs plus the five pre-action checks the row already names correctly.
 
 ---
 
@@ -795,7 +811,11 @@ entrypoints/
 tests/
 ├── unit/{action-schema,run-state,ownership,tiers,never-rules,gate,actuator,
 │         verifier,journal,approval-copy}.spec.ts
-└── e2e/{scope,never-tier,stop,false-confirm}.spec.ts
+└── e2e/
+    ├── {scope,never-tier,stop,false-confirm}.spec.ts
+    ├── gate-wake.bench.ts    # [§15] cold-SW-wake → gate-decision, 30 samples
+    ├── copilot.bench.ts      # [§15] action → verified outcome, 40 fixture actions
+    ├── sw-control.ts         # [§15] CDP-based real service-worker termination
     fixtures/{react-form.html, custom-button.html, quill.html, modal-cover.html,
               swallowed-submit.html, slow-settle.html}
 ```
@@ -815,6 +835,61 @@ tests/
 | Actions on a non-granted origin | `scope.spec.ts` | **0** — hard gate |
 | False confirmation on Always-tier | `false-confirm.spec.ts` | **0** — hard gate |
 | Content-script bundle | CI gzip check | ≤ 80 KB (actuator + verifier added to Phase 2's ~52 KB) |
+
+**Implementation note (both benchmarks now built and CI-gated):**
+
+- **Isolating the gate from perception.** "Time a gate call" needs a way to
+  reach `lib/policy/gate.ts` without first paying Phase 2's perception
+  budget — `AGENT_ACT` always perceives the page before it resolves an
+  instruction or calls `gate()` (`runAgentAct` in `entrypoints/
+  background.ts`), which would fold two different subsystems' budgets into
+  one number. `tests/e2e/gate-wake.bench.ts` uses a dedicated
+  `AGENT_BENCH_GATE` message (`lib/schemas/message.schema.ts`) that calls
+  `gate()` directly against a `read_page` request — the one implemented
+  verb with no handle, so it exercises every real check (run identity, tab
+  identity, origin scope, tier, run state, stop flag) without needing a
+  pre-seeded ownership ledger. The handler is compiled out of every
+  non-e2e build by a `__PP_E2E__` compile-time flag (`wxt.config.ts`'s
+  `vite.define`, the same never-ships-in-production mechanism as the
+  e2e-only `tabs` permission in §8.2) — verified by grepping the
+  production `background.js`, where the case reduces to an unconditional
+  `NOT_AVAILABLE` with the real `gate()`-calling code entirely absent.
+  `tests/e2e/sw-control.ts` force-terminates the real service worker via
+  CDP `Target.closeTarget` (Playwright has no built-in API for this) so
+  each of the 30 samples is a genuine cold wake, not an idle-warm one.
+- **`copilot.bench.ts`**, named exactly as this table specifies, replays
+  five already-proven action/fixture pairs (reused verbatim from
+  `actuation.spec.ts`/`scope.spec.ts`, not new untested instructions) 8
+  times each (5×8 = 40), timing only the `AGENT_ACT` round trip and
+  excluding page navigation, which the metric name does not cover.
+  `slow-settle.html` is excluded on purpose — it never settles by
+  construction (it exists to buy `stop.spec.ts` time), so it is not part
+  of "the deterministic path"'s happy population.
+- **Both are real, CI-gated Playwright tests**, not a manual script —
+  `playwright.config.ts`'s `testMatch` was widened to `*.bench.ts` so
+  `npm run ci` runs and asserts them exactly like every other §15 hard
+  gate.
+- **Real numbers, in this environment:** cold SW wake → gate decision,
+  n=30, p95 ≈ 145–150 ms (target ≤ 300 ms); action → verified outcome,
+  n=40, p95 ≈ 840–870 ms (target ≤ 1.5 s). Both comfortably inside budget;
+  absolute numbers will vary by machine, which is why the assertion is the
+  budget, not these figures.
+- **A real bug this benchmark found**, not just exercised: replaying
+  `quill.html`'s `type` action 8 times surfaced that every one verified as
+  `failed`/`WRITE_REJECTED`, even though the write genuinely landed
+  (`actuation.spec.ts`'s dedicated test only ever asserted
+  `phase === 'done'`, never `verified`, so this was never caught before).
+  Root cause: `lib/page/perception.ts`'s `computeValueShape()` returned
+  `undefined` for any element that wasn't an `input`/`textarea`/`select`,
+  so a contenteditable region's post-action snapshot never carried its
+  text — `lib/page/verifier.ts`'s `type` case compared the actuator's real
+  write against a value the perception layer never produced.
+  `lib/page/actuator.ts`'s own `readValue()` already read
+  `innerText`/`textContent` for `isContentEditable`; `computeValueShape()`
+  now does the same. Fixed with a regression test in
+  `tests/unit/perception.spec.ts` (empty and filled contenteditable
+  cases) — `quill.html`'s replayed action now verifies `confirmed` on
+  every one of the 8 samples.
 
 ---
 
