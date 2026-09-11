@@ -22,6 +22,7 @@
  * MutationObserver running on the page forever.
  */
 import { SnippetManager } from '@lib/ui/snippet-manager';
+import { AutocompleteManager } from '@lib/ui/autocomplete-manager';
 import { ElementRegistry } from '@lib/page/registry';
 import { SettleDetector } from '@lib/page/settle';
 import { buildSnapshot, visibilityOf, isDisabled } from '@lib/page/perception';
@@ -43,6 +44,12 @@ export default defineContentScript({
                                // reported as unreachable, never silently empty
   main(ctx) {
     new SnippetManager();
+    // [Phase 4 §9] Local-only, granted-origins-only ghost text — see
+    // lib/ui/autocomplete-manager.ts's header for all four §3.7.22
+    // conditions. Instantiated here and nowhere else: this file is only
+    // ever registered per grant (lib/policy/scope.ts), so an ungranted
+    // origin never loads this class at all.
+    new AutocompleteManager();
 
     const registry = new ElementRegistry();
     const settle = new SettleDetector();

@@ -22,6 +22,11 @@ export async function runRefactorLoop(
   originalPrompt: string;
   refinedPrompt: string;
   score: number;
+  /** §6.3 — true when no iteration ever produced a real score (the engine
+   *  was unavailable or its output never validated). `score` is then 0,
+   *  and callers MUST show "I couldn't score this" rather than "0/100" —
+   *  a fabricated-looking number is exactly what §6.3 deletes. */
+  scoreUnavailable: boolean;
   iterations: number;
   critique: string;
   provider: string;
@@ -32,10 +37,11 @@ export async function runRefactorLoop(
   let iterations = 0;
   let lastScore = 0;
   let lastCritique = '';
+  let scored = false;
 
   let totalLatency = 0;
   let totalTokens = 0;
-  let lastProvider = 'groq';
+  let lastProvider = 'unavailable';
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
@@ -56,11 +62,19 @@ export async function runRefactorLoop(
     // Step 2: Score — use profile scoring guidelines
     console.log(`[Loop Controller] Iteration ${iterations}: Scoring...`);
     const scoreRes = await scorePrompt(currentPrompt, scoringGuidelinesMd);
-    lastScore = scoreRes.score;
-    lastCritique = scoreRes.critique;
-    lastProvider = scoreRes.provider;
-    totalLatency += scoreRes.latencyMs;
-    totalTokens += scoreRes.tokensUsed || 0;
+    // §6.3: no fabricated score on failure. A scoring failure stops the
+    // loop with whatever the last successful iteration produced, rather
+    // than pretending a 50/100 measurement happened.
+    if (!scoreRes.ok) {
+      console.warn(`[Loop Controller] Scoring failed (${scoreRes.error}); stopping with the current draft.`);
+      break;
+    }
+    scored = true;
+    lastScore = scoreRes.value.score;
+    lastCritique = scoreRes.value.critique;
+    lastProvider = scoreRes.value.provider;
+    totalLatency += scoreRes.value.latencyMs;
+    totalTokens += scoreRes.value.tokensUsed || 0;
 
     console.log(`[Loop Controller] Score: ${lastScore}/100. Critique: "${lastCritique}"`);
 
@@ -77,6 +91,7 @@ export async function runRefactorLoop(
     originalPrompt: userPrompt,
     refinedPrompt: currentPrompt,
     score: lastScore,
+    scoreUnavailable: !scored,
     iterations,
     critique: lastCritique,
     provider: lastProvider,

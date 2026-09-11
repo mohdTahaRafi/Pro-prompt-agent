@@ -404,13 +404,78 @@ function ContextLabView() {
   );
 }
 
+// ═══ Model Tiers status card — §11's Models tab ═══
+//
+// "A user opens the dashboard's Models tab and sees four tiers listed with
+// what each is currently running on" (§11's Milestone Definition).
+interface TierRow { label: string; available: boolean; engine: string | null; model: string | null; reason?: string }
+
+function ModelTiersCard() {
+  const [posture, setPosture] = useState<'local-only' | 'hybrid'>('local-only');
+  const [rows, setRows] = useState<TierRow[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function refresh() {
+    setBusy(true);
+    try {
+      const cap = await send<any>('GET_POSTURE_CAPABILITY', { posture });
+      setRows([
+        { label: 'Planner', available: cap.planner.available, engine: cap.planner.engine, model: cap.planner.model, reason: cap.planner.reason },
+        { label: 'Judge', available: cap.judge.available, engine: cap.judge.engine, model: cap.judge.model },
+        { label: 'Vision', available: cap.vision.available, engine: cap.vision.engine, model: null },
+        { label: 'Inline', available: cap.inline.available, engine: cap.inline.engine, model: null },
+      ]);
+    } catch {
+      setRows(null);
+    }
+    setBusy(false);
+  }
+
+  useEffect(() => { refresh(); }, [posture]);
+
+  return (
+    <div className="card p-6 mb-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-h2 font-semibold">Model Tiers</h3>
+        <div className="flex items-center gap-2 text-small">
+          <label className="text-text-muted">Posture</label>
+          <select value={posture} onChange={(e) => setPosture(e.target.value as any)} className="input-field py-1">
+            <option value="local-only">Local-only</option>
+            <option value="hybrid">Hybrid</option>
+          </select>
+          <button onClick={refresh} disabled={busy} className="btn-secondary px-2 py-1 text-xs border border-border-default">{busy ? '⏳' : '↻'}</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {(rows ?? []).map((r) => (
+          <div key={r.label} className={`p-3 rounded-xl border ${r.available ? 'border-accent-green/40' : 'border-accent-yellow/40 bg-accent-yellow-bg'}`}>
+            <span className="text-small font-semibold block">{r.label}</span>
+            {r.available ? (
+              <>
+                <span className="text-xs text-accent-green block">ready</span>
+                <span className="text-xs text-text-muted block truncate" title={r.model ?? r.engine ?? ''}>{r.engine ?? '—'}{r.model ? ` · ${r.model}` : ''}</span>
+              </>
+            ) : (
+              <span className="text-xs text-text-secondary block">{r.reason ?? 'not reachable'}</span>
+            )}
+          </div>
+        ))}
+        {!rows && <span className="text-small text-text-muted col-span-4">Loading…</span>}
+      </div>
+    </div>
+  );
+}
+
 // ═══ Settings ═══
 function SettingsView() {
-  const [groqKey, setGroqKey] = useState('');
-  const [groqModel, setGroqModel] = useState('llama-3.3-70b-versatile');
+  const [remoteKey, setRemoteKey] = useState('');
+  const [remoteBaseUrl, setRemoteBaseUrl] = useState('https://api.groq.com/openai/v1');
+  const [remoteModel, setRemoteModel] = useState('llama-3.3-70b-versatile');
+  const [remoteLabel, setRemoteLabel] = useState('Groq');
   const [masked, setMasked] = useState(true);
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
-  const [activeProvider, setActiveProvider] = useState('webgpu');
+  const [ollamaPlannerModel, setOllamaPlannerModel] = useState('qwen2.5:14b');
+  const [autocompleteEnabled, setAutocompleteEnabledState] = useState(true);
   const [status, setStatus] = useState('');
   const [downloadProgress, setDownloadProgress] = useState<{ text: string, progress: number } | null>(null);
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
@@ -419,25 +484,30 @@ function SettingsView() {
   const [migrationNotice, setMigrationNotice] = useState(false);
 
   useEffect(() => {
-    // [Phase 1 PRE-5] the key now lives in storage.local only. groq-adapter.ts
-    // performs the one-time migration out of storage.sync on first read; here
-    // we just read local and show the one-time notice if it fired.
+    // [Phase 1 PRE-5, Phase 4] the key lives in storage.local only.
+    // lib/model/engines/remote.ts performs the one-time migration out of
+    // the Phase 1 groqApiKey/groqModel fields (and, before that, out of
+    // storage.sync) on first read; here we just read local and show the
+    // one-time notice if it fired.
     chrome.storage.local.get(
-      ['groqApiKey', 'groqModel', 'keyMigrationNotice', 'keyMigrationNoticeShown'],
-      (r: { groqApiKey?: string; groqModel?: string; keyMigrationNotice?: number; keyMigrationNoticeShown?: boolean }) => {
-        if (r.groqApiKey) setGroqKey(r.groqApiKey);
-        if (r.groqModel) setGroqModel(r.groqModel);
+      ['remoteApiKey', 'remoteBaseUrl', 'remoteModel', 'remoteLabel', 'keyMigrationNotice', 'keyMigrationNoticeShown'],
+      (r: { remoteApiKey?: string; remoteBaseUrl?: string; remoteModel?: string; remoteLabel?: string; keyMigrationNotice?: number; keyMigrationNoticeShown?: boolean }) => {
+        if (r.remoteApiKey) setRemoteKey(r.remoteApiKey);
+        if (r.remoteBaseUrl) setRemoteBaseUrl(r.remoteBaseUrl);
+        if (r.remoteModel) setRemoteModel(r.remoteModel);
+        if (r.remoteLabel) setRemoteLabel(r.remoteLabel);
         if (r.keyMigrationNotice && !r.keyMigrationNoticeShown) {
           setMigrationNotice(true);
           chrome.storage.local.set({ keyMigrationNoticeShown: true });
         }
       });
     chrome.storage.local.get(
-      ['ollamaBaseUrl', 'activeProvider', 'downloadedModels'],
-      (r: { ollamaBaseUrl?: string; activeProvider?: string; downloadedModels?: string[] }) => {
+      ['ollamaBaseUrl', 'ollamaPlannerModel', 'downloadedModels', 'autocompleteEnabled'],
+      (r: { ollamaBaseUrl?: string; ollamaPlannerModel?: string; downloadedModels?: string[]; autocompleteEnabled?: boolean }) => {
         if (r.ollamaBaseUrl) setOllamaUrl(r.ollamaBaseUrl);
-        if (r.activeProvider) setActiveProvider(r.activeProvider);
+        if (r.ollamaPlannerModel) setOllamaPlannerModel(r.ollamaPlannerModel);
         if (r.downloadedModels) setDownloadedModels(r.downloadedModels);
+        if (r.autocompleteEnabled !== undefined) setAutocompleteEnabledState(r.autocompleteEnabled);
       });
 
     // Use WEBGPU_GET_STATE routed through SW (not direct offscreen bypass)
@@ -490,61 +560,83 @@ function SettingsView() {
         </div>
       )}
 
-      {/* Provider Selection */}
-      <div className="card p-6 mb-4">
-        <h3 className="text-h2 font-semibold mb-4">Active Model Provider</h3>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { key: 'groq', label: 'Groq Cloud', icon: '☁️', desc: 'Fastest cloud inference' },
-            { key: 'ollama', label: 'Ollama', icon: '🏠', desc: 'Local, privacy-first' },
-            { key: 'webgpu', label: 'WebGPU', icon: '🧠', desc: 'In-browser GPU' },
-          ].map(({ key, label, icon, desc }) => (
-            <button key={key}
-              onClick={() => { send('SET_ACTIVE_PROVIDER', { provider: key }); setActiveProvider(key); flash(`✅ Switched to ${label}`); }}
-              className={`p-4 rounded-xl text-left transition-all cursor-pointer border
-                ${activeProvider === key ? 'border-primary bg-primary/10 shadow-glow-sm' : 'border-border-default hover:border-primary/30 bg-transparent'}`}>
-              <span className="text-2xl block mb-2">{icon}</span>
-              <span className="text-body font-semibold block">{label}</span>
-              <span className="text-small text-text-muted">{desc}</span>
-              {activeProvider === key && <span className="text-small text-primary font-medium block mt-1">✓ Active</span>}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* §11 — the four tiers, what each is currently running on */}
+      <ModelTiersCard />
 
-      {/* Groq Key */}
+      {/* Remote provider — the Hybrid planner's remote entry (§5.4) */}
       <div className="card p-6 mb-4">
-        <h3 className="text-h2 font-semibold mb-3">Groq API Key</h3>
-        <p className="text-small text-text-muted mb-3">From <a href="https://console.groq.com" target="_blank" className="text-primary hover:underline">console.groq.com</a>. Stored on this device only — it is never synced to your Google account.</p>
+        <h3 className="text-h2 font-semibold mb-1">Remote Provider</h3>
+        <p className="text-small text-text-muted mb-3">
+          Used ONLY when a run's posture is set to Hybrid (chosen per-run in the Copilot panel, never silently).
+          Any OpenAI-compatible endpoint — Groq, OpenAI, OpenRouter, Together, a local gateway. Stored on this device only.
+        </p>
+        <label className="text-small text-text-muted block mb-1">Base URL</label>
+        <input type="text" value={remoteBaseUrl} onChange={e => setRemoteBaseUrl(e.target.value)} placeholder="https://api.groq.com/openai/v1" className="input-field w-full mb-3" />
+        <label className="text-small text-text-muted block mb-1">API Key</label>
         <div className="flex gap-2 mb-3">
           <div className="flex-1 relative">
-            <input type={masked ? 'password' : 'text'} value={groqKey} onChange={e => setGroqKey(e.target.value)} placeholder="gsk_..." className="input-field pr-10" />
+            <input type={masked ? 'password' : 'text'} value={remoteKey} onChange={e => setRemoteKey(e.target.value)} placeholder="sk-..." className="input-field pr-10 w-full" />
             <button onClick={() => setMasked(!masked)} className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-none">{masked ? '👁️' : '🙈'}</button>
           </div>
-          <button onClick={() => { chrome.storage.local.set({ groqApiKey: groqKey }); flash('✅ API key saved to this device!'); }} className="btn-primary px-4 py-2 shrink-0">Save</button>
         </div>
-        {/* Editable model id: a hard-coded provider model goes stale when Groq
-            decommissions it, and a user should not need an extension update
-            to point at the replacement. */}
-        <label className="text-small text-text-muted block mb-1">Model</label>
-        <div className="flex gap-2">
-          <input type="text" value={groqModel} onChange={e => setGroqModel(e.target.value)} placeholder="llama-3.3-70b-versatile" className="input-field flex-1" />
-          <button onClick={() => { chrome.storage.local.set({ groqModel }); flash('✅ Model saved!'); }} className="btn-primary px-4 py-2 shrink-0">Save</button>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-small text-text-muted block mb-1">Model</label>
+            <input type="text" value={remoteModel} onChange={e => setRemoteModel(e.target.value)} placeholder="llama-3.3-70b-versatile" className="input-field w-full" />
+          </div>
+          <div>
+            <label className="text-small text-text-muted block mb-1">Label (shown in the disclosure sentence)</label>
+            <input type="text" value={remoteLabel} onChange={e => setRemoteLabel(e.target.value)} placeholder="Groq" className="input-field w-full" />
+          </div>
         </div>
+        <button onClick={async () => {
+          try {
+            // Requests the host permission for baseUrl's origin — must run
+            // inside this onClick's user gesture (§5.4).
+            await send('SET_REMOTE_CONFIG', { apiKey: remoteKey, baseUrl: remoteBaseUrl, model: remoteModel, label: remoteLabel });
+            flash('✅ Remote provider saved.');
+          } catch (e: any) { flash(`❌ ${e.message}`); }
+        }} className="btn-primary px-4 py-2">Save</button>
       </div>
 
-      {/* Ollama */}
+      {/* Ollama — the Local-only and Hybrid planner's local entry (§5.3) */}
       <div className="card p-6 mb-4">
-        <h3 className="text-h2 font-semibold mb-3">Ollama Configuration</h3>
-        <div className="flex gap-2">
-          <input type="text" value={ollamaUrl} onChange={e => setOllamaUrl(e.target.value)} className="input-field flex-1" />
-          <button onClick={() => { chrome.storage.local.set({ ollamaBaseUrl: ollamaUrl }); flash('✅ Ollama URL saved!'); }} className="btn-primary px-4 py-2 shrink-0">Save</button>
+        <h3 className="text-h2 font-semibold mb-3">Ollama (Planner)</h3>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-small text-text-muted block mb-1">Base URL</label>
+            <input type="text" value={ollamaUrl} onChange={e => setOllamaUrl(e.target.value)} className="input-field w-full" />
+          </div>
+          <div>
+            <label className="text-small text-text-muted block mb-1">Planner model</label>
+            <input type="text" value={ollamaPlannerModel} onChange={e => setOllamaPlannerModel(e.target.value)} placeholder="qwen2.5:14b" className="input-field w-full" />
+          </div>
         </div>
+        <button onClick={async () => {
+          await send('SET_OLLAMA_CONFIG', { baseUrl: ollamaUrl, model: ollamaPlannerModel });
+          flash('✅ Ollama config saved!');
+        }} className="btn-primary px-4 py-2">Save</button>
       </div>
 
-      {/* WebGPU / Offline Models */}
+      {/* Ghost text — local-only inline completion (§9) */}
+      <div className="card p-6 mb-4 flex items-center justify-between">
+        <div>
+          <h3 className="text-h2 font-semibold mb-1">Ghost Text (Inline Completion)</h3>
+          <p className="text-small text-text-muted">Local only — never sent anywhere, never shown on a password field.</p>
+        </div>
+        <button onClick={async () => {
+          const next = !autocompleteEnabled;
+          setAutocompleteEnabledState(next);
+          await send('TOGGLE_AUTOCOMPLETE', { enabled: next });
+        }} className={`px-4 py-2 rounded-lg ${autocompleteEnabled ? 'btn-primary' : 'btn-secondary border border-border-default'}`}>
+          {autocompleteEnabled ? 'On' : 'Off'}
+        </button>
+      </div>
+
+      {/* WebGPU / Offline Models — the judge tier's fallback engine (§5.2),
+          used when Chrome's built-in Prompt API isn't available. */}
       <div className="card p-6 mb-4">
-        <h3 className="text-h2 font-semibold mb-1">Offline Models (WebGPU)</h3>
+        <h3 className="text-h2 font-semibold mb-1">Offline Models (WebLLM) — Judge fallback</h3>
         <p className="text-small text-text-muted mb-4">Browser-compatible models. Recommended: Qwen2.5-0.5B or Phi-3-mini for best performance.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {prebuiltAppConfig.model_list.filter(m => (WEBGPU_MODELS as readonly string[]).includes(m.model_id)).map((model) => (
@@ -842,6 +934,21 @@ type CopilotResult =
   | { phase: 'failed'; failureCause: string }
   | { phase: 'denied' };
 
+// §8.3, §11, task 4.14 — the Plan panel. Display only: no Execute button
+// exists this phase (§1).
+interface PlanOutcome {
+  phase: 'no_planner' | 'refused' | 'planned' | 'invalid';
+  reason?: string; ollamaPullCommand?: string;
+  code?: string; message?: string;
+  runId?: number; disclosureSummary?: string;
+  plan?: {
+    restatement: string;
+    steps: { n: number; intent: string; action: { verb: string }; expectation: string }[];
+    willNotDo: string[];
+    clarifyingQuestion?: string;
+  };
+}
+
 function CopilotView() {
   const [origins, setOrigins] = useState<string[]>([]);
   const [origin, setOrigin] = useState<string>('');
@@ -852,6 +959,38 @@ function CopilotView() {
   const [result, setResult] = useState<CopilotResult | null>(null);
   const [runId, setRunId] = useState<number | null>(null);
   const [events, setEvents] = useState<any[]>([]);
+
+  // ── §3.2, §8.3 — posture + the Plan panel ──
+  const [posture, setPosture] = useState<'local-only' | 'hybrid'>('local-only');
+  const [disclosure, setDisclosure] = useState<string>('');
+  const [goal, setGoal] = useState('');
+  const [planBusy, setPlanBusy] = useState(false);
+  const [planOutcome, setPlanOutcome] = useState<PlanOutcome | null>(null);
+  const [hybridConfirmed, setHybridConfirmed] = useState(false);
+
+  useEffect(() => {
+    if (!tabId) return;
+    send<any>('GET_POSTURE_CAPABILITY', { posture }).then((cap) => setDisclosure(cap.disclosure.summary)).catch(() => setDisclosure(''));
+    setHybridConfirmed(false);
+  }, [tabId, posture]);
+
+  async function goPlan() {
+    if (!tabId || !goal.trim()) return;
+    if (posture === 'hybrid' && !hybridConfirmed) return;   // the disclosure MUST be shown and accepted first (§3.2, task 4.13)
+    setPlanBusy(true); setPlanOutcome(null); setError('');
+    try {
+      const data = await send<PlanOutcome>('AGENT_PLAN', { tabId, goal: goal.trim(), posture });
+      setPlanOutcome(data);
+      if (data.phase === 'planned' && data.runId) {
+        setRunId(data.runId);
+        const evs = await send<any[]>('AGENT_GET_RUN_EVENTS', { runId: data.runId });
+        setEvents(evs ?? []);
+      }
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    }
+    setPlanBusy(false);
+  }
 
   useEffect(() => {
     send<string[]>('GET_ACTIVE_GRANTS').then((list) => {
@@ -926,13 +1065,102 @@ function CopilotView() {
       </div>
 
       <div className="card p-5 mb-4 flex items-center gap-3 flex-wrap">
-        <label className="text-small text-text-muted">Granted origin</label>
-        <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="input-field">
+        <label htmlFor="pp-copilot-origin-select" className="text-small text-text-muted">Granted origin</label>
+        {/* [Phase 4] id added — the Plan panel below introduced a second
+            <select> (posture) in this view, and tests/e2e/copilot-panel.spec.ts's
+            openCopilot() needs to keep addressing THIS one unambiguously. */}
+        <select id="pp-copilot-origin-select" value={origin} onChange={(e) => setOrigin(e.target.value)} className="input-field">
           {origins.length === 0 && <option value="">No granted origins</option>}
           {origins.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
         <span className="text-xs text-text-muted">{tabId ? `tab ${tabId}` : origin ? 'no open tab for this origin' : ''}</span>
         {runId && <span className="text-xs text-text-muted">run #{runId}</span>}
+      </div>
+
+      {/* §8.3, §11 — the Plan panel. Produces a plan; does not execute one. */}
+      <div className="card p-5 mb-4">
+        <h3 className="text-h2 font-semibold mb-1">Plan a multi-step task</h3>
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
+          <label className="text-small text-text-muted">Posture</label>
+          <select value={posture} onChange={(e) => { setPosture(e.target.value as any); setHybridConfirmed(false); }} className="input-field">
+            <option value="local-only">Local-only</option>
+            <option value="hybrid">Hybrid</option>
+          </select>
+        </div>
+        {disclosure && (
+          <div className={`text-small p-3 rounded-lg mb-3 ${posture === 'hybrid' ? 'border border-accent-yellow/40 bg-accent-yellow-bg' : 'border border-border-default'}`}>
+            {/* `disclosure` embeds a user-configured host string (Settings'
+                Remote Provider base URL) — split on the fixed **bold**
+                markers and render as text nodes rather than
+                dangerouslySetInnerHTML, so that field can never inject
+                markup into this, or any other, extension page. */}
+            <span>{disclosure.split('**').map((part, i) => (i % 2 === 1 ? <b key={i}>{part}</b> : <span key={i}>{part}</span>))}</span>
+            {posture === 'hybrid' && !hybridConfirmed && (
+              <div className="mt-2">
+                <button onClick={() => setHybridConfirmed(true)} className="btn-primary px-3 py-1 text-xs">I understand — continue</button>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <input value={goal} onChange={(e) => setGoal(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !planBusy) goPlan(); }}
+            placeholder='e.g. "Fill this form from my profile and stop before submitting."'
+            className="input-field flex-1" />
+          <button onClick={goPlan} disabled={!tabId || !goal.trim() || planBusy || (posture === 'hybrid' && !hybridConfirmed)}
+            className="btn-primary px-5 py-2 disabled:opacity-50">
+            {planBusy ? '⏳' : '🧭'} Plan
+          </button>
+        </div>
+
+        {planOutcome?.phase === 'no_planner' && (
+          <div className="mt-4 p-4 rounded-lg border border-accent-yellow/40 bg-accent-yellow-bg">
+            <p className="text-small mb-3">This run can't start. {planOutcome.reason}</p>
+            <div className="flex flex-wrap gap-2">
+              <div className="text-xs font-mono bg-background px-2 py-1.5 rounded border border-border-default">{planOutcome.ollamaPullCommand}</div>
+              <button onClick={() => setPosture('hybrid')} className="btn-secondary px-3 py-1.5 text-xs border border-border-default">Switch this run to Hybrid</button>
+              <button onClick={() => { setPlanOutcome(null); setGoal(''); }} className="btn-secondary px-3 py-1.5 text-xs border border-border-default">Use single actions instead</button>
+            </div>
+          </div>
+        )}
+
+        {planOutcome?.phase === 'refused' && (
+          <div className="mt-4 text-accent-red text-small">
+            <span className="font-mono text-xs mr-2">{planOutcome.code}</span>{planOutcome.message}
+          </div>
+        )}
+
+        {planOutcome?.phase === 'invalid' && (
+          <p className="mt-4 text-small text-accent-red">The plan the model produced didn't validate — try again, or switch models.</p>
+        )}
+
+        {planOutcome?.phase === 'planned' && planOutcome.plan && (
+          <div className="mt-4">
+            <p className="text-small text-text-secondary mb-3">{planOutcome.plan.restatement}</p>
+            {planOutcome.plan.clarifyingQuestion ? (
+              <p className="text-small italic">{planOutcome.plan.clarifyingQuestion}</p>
+            ) : (
+              <>
+                <ol className="space-y-2 mb-4">
+                  {planOutcome.plan.steps.map((s) => (
+                    <li key={s.n} className="text-small border-l-2 border-primary/40 pl-3">
+                      <span className="font-mono text-xs text-text-muted mr-2">{s.n}.</span>
+                      <span className="font-medium">{s.intent}</span>
+                      <span className="text-xs text-text-muted block ml-6">verb: {s.action.verb} — expects: {s.expectation}</span>
+                    </li>
+                  ))}
+                </ol>
+                <h4 className="text-body font-semibold mb-1">What I will not do</h4>
+                <ul className="text-small text-text-secondary list-disc list-inside">
+                  {planOutcome.plan.willNotDo.length === 0
+                    ? <li className="list-none italic">(nothing declared)</li>
+                    : planOutcome.plan.willNotDo.map((w, i) => <li key={i}>{w}</li>)}
+                </ul>
+              </>
+            )}
+            <p className="text-xs text-text-muted mt-3">No Execute button — planning only this phase.</p>
+          </div>
+        )}
       </div>
 
       <div className="card p-5 mb-4 flex items-center gap-3">

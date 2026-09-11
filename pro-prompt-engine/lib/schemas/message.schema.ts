@@ -70,15 +70,6 @@ const SnippetSchema = z.object({
   updatedAt: z.number().optional(),
 });
 
-const LLMRequestSchema = z.object({
-  systemPrompt: z.string(),
-  userPrompt: z.string(),
-  maxTokens: z.number().optional(),
-  temperature: z.number().optional(),
-  stopSequences: z.array(z.string()).optional(),
-  provider: z.enum(['webgpu', 'ollama', 'groq']).optional(),
-});
-
 // ── Per-type requests ──
 
 const req = <Type extends string, Payload extends z.ZodTypeAny>(type: Type, payload: Payload) =>
@@ -88,7 +79,6 @@ const reqNoPayload = <Type extends string>(type: Type) =>
   z.object({ type: z.literal(type), payload: z.undefined().optional(), requestId: z.string().optional() });
 
 export const PingRequest = reqNoPayload('PING');
-export const InferenceRequest = req('INFERENCE', LLMRequestSchema);
 export const ScoreRequest = req('SCORE', z.object({ prompt: z.string() }));
 export const RefactorRequest = req('REFACTOR', z.object({
   prompt: z.string(),
@@ -137,8 +127,42 @@ export const WebgpuGetStateRequest = reqNoPayload('WEBGPU_GET_STATE');
 
 export const CheckPiiRequest = req('CHECK_PII', z.object({ text: z.string() }));
 
-export const GetProviderStatusRequest = reqNoPayload('GET_PROVIDER_STATUS');
-export const SetActiveProviderRequest = req('SET_ACTIVE_PROVIDER', z.object({ provider: z.string() }));
+// [Phase 4 §11] the Models tab — the posture the Models tab or the Copilot
+// panel is currently showing capability for. Not the run's OWN posture
+// (that is stored on the run row, lib/types/run.types.ts) — this is a
+// capability PROBE, made before any run exists.
+export const GetPostureCapabilityRequest = req('GET_POSTURE_CAPABILITY', z.object({
+  posture: z.enum(['local-only', 'hybrid']),
+}));
+
+export const SetOllamaConfigRequest = req('SET_OLLAMA_CONFIG', z.object({
+  baseUrl: z.string().optional(),
+  model: z.string().optional(),
+}));
+
+export const SetRemoteConfigRequest = req('SET_REMOTE_CONFIG', z.object({
+  apiKey: z.string().optional(),
+  baseUrl: z.string().optional(),
+  model: z.string().optional(),
+  label: z.string().optional(),
+}));
+
+// [Phase 4 §9] content-script-only in practice (lib/ui/autocomplete-manager.ts),
+// but validated at the same boundary as every other message.
+export const InlineCompleteRequest = req('INLINE_COMPLETE', z.object({
+  text: z.string().max(1_200),
+  maxTokens: z.number().int().positive().max(64).optional(),
+}));
+
+export const ToggleAutocompleteRequest = req('TOGGLE_AUTOCOMPLETE', z.object({ enabled: z.boolean() }));
+
+// [Phase 4 §8.3, §8.4, task 4.14] the Plan panel — display only, no Execute
+// button this phase (§1).
+export const AgentPlanRequest = req('AGENT_PLAN', z.object({
+  tabId: z.number(),
+  goal: z.string().min(1).max(2_000),
+  posture: z.enum(['local-only', 'hybrid']),
+}));
 
 export const GetPromptHistoryRequest = req('GET_PROMPT_HISTORY', z.object({
   profileId: z.number().optional(),
@@ -200,12 +224,13 @@ export const AgentListRunsRequest = reqNoPayload('AGENT_LIST_RUNS');
 export const AgentBenchGateRequest = req('AGENT_BENCH_GATE', z.object({ tabId: z.number().int() }));
 
 export const ExtensionRequest = z.discriminatedUnion('type', [
-  PingRequest, InferenceRequest, ScoreRequest, RefactorRequest, GenerateRequest,
+  PingRequest, ScoreRequest, RefactorRequest, GenerateRequest,
   GetProfileRequest, SetProfileRequest, GetAllProfilesRequest, SetActiveProfileRequest, DeleteProfileRequest,
   GetSnippetsRequest, SaveSnippetRequest, DeleteSnippetRequest,
   SaveContextRequest, ContextFeedRequest, GetSettingsRequest, SetSettingsRequest,
   LoadModelRequest, UnloadModelRequest, WebgpuGetStateRequest,
-  CheckPiiRequest, GetProviderStatusRequest, SetActiveProviderRequest,
+  CheckPiiRequest, GetPostureCapabilityRequest, SetOllamaConfigRequest, SetRemoteConfigRequest,
+  InlineCompleteRequest, ToggleAutocompleteRequest, AgentPlanRequest,
   GetPromptHistoryRequest, OpenDashboardRequest, ModelStateChangedRequest,
   GrantOriginRequest, RevokeOriginRequest, GetTabIdRequest, GetActiveGrantsRequest,
   AgentActRequest, AgentApprovalResponseRequest, AgentStopRequest,

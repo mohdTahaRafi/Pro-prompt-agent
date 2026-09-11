@@ -12,6 +12,7 @@
 
 import type { Verb } from '@lib/schemas/action.schema';
 import type { Plan } from '@lib/schemas/plan.schema';
+import type { Posture } from '@lib/model/posture';
 
 export type RunState =
   | 'planning'                 // admitted; plan not yet produced
@@ -38,7 +39,7 @@ export interface RunRecord {
   goal: string;                       // the user's original text, never rewritten
   state: RunState;
   mode: 'suggest' | 'step' | 'supervised' | 'watch';   // 'watch' is Phase 11
-  posture: 'local-only' | 'hybrid';
+  posture: Posture;
   backend: 'dom' | 'cdp';              // 'cdp' is Phase 9
   origin: string;                      // the origin the run was started on
   scope: string[];                     // every origin granted to this run
@@ -56,6 +57,12 @@ export interface RunRecord {
 // code appends anything outside this set — lib/agent/journal.ts is the only
 // writer of runEvents (task 3.11), so this union is enforceable at the call
 // site rather than merely documentary.
+// [Phase 4 §4.2, §5.4, §6.2, §7.1] four kinds added: `inference.fallback`
+// (a within-locality engine substitution, §4.2), `inference.remote` (every
+// remote call — tier, provider, host and token counts, never the payload,
+// §5.4 defence 5), `model.output_invalid` (the repair path exhausted its
+// one retry, §6.2), and `plan.produced` (a planner call that returned a
+// schema-valid Plan, §8.3) — the Plan panel's demonstrable artifact.
 export type RunEventKind =
   | 'run.created'
   | 'action.requested'
@@ -66,7 +73,11 @@ export type RunEventKind =
   | 'approval.requested'
   | 'approval.granted'
   | 'approval.denied'
-  | 'run.completed';
+  | 'run.completed'
+  | 'inference.fallback'
+  | 'inference.remote'
+  | 'model.output_invalid'
+  | 'plan.produced';
 
 export interface RunEvent {
   id?: number;

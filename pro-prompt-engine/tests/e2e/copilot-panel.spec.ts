@@ -24,7 +24,9 @@ async function openCopilot(context: BrowserContext, extensionId: string, fixture
   await page.goto(`${ORIGIN}/${fixturePath}`);
 
   await options.getByRole('button', { name: /Copilot/ }).click();
-  await options.locator('select').selectOption(ORIGIN);
+  // [Phase 4] '#pp-copilot-origin-select', not the bare 'select' locator —
+  // the Plan panel (§8.3) added a second <select> (posture) to this view.
+  await options.locator('#pp-copilot-origin-select').selectOption(ORIGIN);
   await expect(options.getByText(/^tab \d+$/)).toBeVisible({ timeout: 5_000 });
   return { options, page };
 }

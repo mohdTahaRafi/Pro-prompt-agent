@@ -3,9 +3,13 @@
  * Intelligently merges new information into an existing Context.md.
  * Rather than blindly appending, it produces a coherent, deduplicated,
  * and token-constrained update — similar to how Gemini CLI maintains GEMINI.md.
+ *
+ * [Phase 4] direct-path text verb, judge tier — same reasoning as
+ * lib/agents/refactor.ts (lib/agents/text-tier.ts's header).
  */
 
-import { routeInference } from '@lib/adapters/llm-router';
+import { route } from '@lib/model/router';
+import { TEXT_TIER_POSTURE } from '@lib/agents/text-tier';
 import { countTokens, MAX_CONTEXT_TOKENS } from '@lib/utils/token-counter';
 
 export async function updateContext(
@@ -25,14 +29,14 @@ Be dense — every sentence should carry information.
 Do NOT exceed 800 words.
 Do NOT include meta-commentary like "Here is the context" — output only the knowledge itself.`;
 
-    const response = await routeInference({
-      systemPrompt,
-      userPrompt: `Distill this into a structured knowledge context (source: ${sourceLabel}):\n\n${newInformation}`,
-      maxTokens: 1024,
-      temperature: 0.2,
+    const response = await route({
+      tier: 'judge', posture: TEXT_TIER_POSTURE,
+      system: systemPrompt,
+      user: `Distill this into a structured knowledge context (source: ${sourceLabel}):\n\n${newInformation}`,
+      maxTokens: 1024, temperature: 0.2,
     });
 
-    return response.content.trim() || newInformation.slice(0, 4000);
+    return (response.ok ? response.value.content.trim() : '') || newInformation.slice(0, 4000);
   }
 
   // With existing context: intelligent merge
@@ -50,14 +54,14 @@ Rules:
 
 Output ONLY the updated Context.md content. No preamble, no explanation.`;
 
-  const response = await routeInference({
-    systemPrompt,
-    userPrompt: `--- EXISTING CONTEXT.MD ---\n${existingContext}\n\n--- NEW INFORMATION TO MERGE (source: ${sourceLabel}) ---\n${newInformation}\n\n--- Produce the updated Context.md: ---`,
-    maxTokens: 2000,
-    temperature: 0.3,
+  const response = await route({
+    tier: 'judge', posture: TEXT_TIER_POSTURE,
+    system: systemPrompt,
+    user: `--- EXISTING CONTEXT.MD ---\n${existingContext}\n\n--- NEW INFORMATION TO MERGE (source: ${sourceLabel}) ---\n${newInformation}\n\n--- Produce the updated Context.md: ---`,
+    maxTokens: 2000, temperature: 0.3,
   });
 
-  const result = response.content.trim();
+  const result = response.ok ? response.value.content.trim() : '';
 
   // Safety: if LLM fails, fall back to simple append with truncation
   if (!result) {
@@ -93,15 +97,16 @@ Respond with ONLY a valid JSON object with these exact keys:
 Example format:
 {"name":"Finance Analyst","icon":"📊","profileDescriptionMd":"...","promptGuidelinesMd":"# Finance Guidelines\\n\\n1. **Precision**: ...","scoringGuidelinesMd":"# Finance Scoring\\n\\n- **Data Specificity (35%)**: ..."}`;
 
-  const response = await routeInference({
-    systemPrompt,
-    userPrompt: `Create a prompt engineering profile for this use case:\n\n${description}`,
-    maxTokens: 1500,
-    temperature: 0.6,
+  const response = await route({
+    tier: 'judge', posture: TEXT_TIER_POSTURE,
+    system: systemPrompt,
+    user: `Create a prompt engineering profile for this use case:\n\n${description}`,
+    maxTokens: 1500, temperature: 0.6,
   });
 
   try {
-    const raw = response.content.replace(/```json/g, '').replace(/```/g, '').trim();
+    if (!response.ok) throw new Error(response.error);
+    const raw = response.value.content.replace(/```json/g, '').replace(/```/g, '').trim();
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) throw new Error('No JSON found');
     const parsed = JSON.parse(match[0]);
