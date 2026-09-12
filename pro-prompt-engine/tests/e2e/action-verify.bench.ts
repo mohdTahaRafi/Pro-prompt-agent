@@ -1,19 +1,25 @@
 /**
- * §15 performance validation — "Action → verified outcome, deterministic
- * path: copilot.bench.ts over 40 fixture actions, ≤ 1.5s p95."
- * Docs/planning/phase_3_gate_actuation_verification.md §15, task 3.17.
+ * §15/§13 performance validation — "Action → verified outcome, deterministic
+ * path: ≤ 1.5s at the p95." Docs/planning/phase_3_gate_actuation_verification.md
+ * §15, task 3.17; Docs/planning/phase_5_agent_loop.md §13 (same metric, same
+ * target, carried forward unchanged by this phase).
+ *
+ * [Phase 5 §16] Renamed from copilot.bench.ts and driven via
+ * AGENT_BENCH_ACT (see agent-helpers.ts's header) now that the Copilot
+ * panel and lib/agent/intent.ts are gone — the pipeline being timed
+ * (gate -> dispatch -> settle+re-read -> verify -> journal) is otherwise
+ * unchanged from Phase 3.
  *
  * Five action templates, each already proven correct by a dedicated
  * assertion elsewhere (actuation.spec.ts, scope.spec.ts) — this file
- * reuses the exact same instructions/fixtures rather than inventing new
- * untested ones, and replays each 8 times (5×8 = 40) to get a real
- * distribution. Every iteration reloads its fixture fresh, so each
- * sample pays the same act→settle-reread→verify pipeline AGENT_ACT
- * always runs, with no cross-iteration state leakage (a repeat click on
+ * reuses the exact same fixtures rather than inventing new untested ones,
+ * and replays each 8 times (5×8 = 40) to get a real distribution. Every
+ * iteration reloads its fixture fresh, so each sample pays the same
+ * pipeline with no cross-iteration state leakage (a repeat click on
  * modal-cover.html's already-dismissed banner would not be the same
- * action the first click was). Only the AGENT_ACT round trip itself is
- * timed — page navigation is excluded, since it is not part of what
- * "action → verified outcome" measures.
+ * action the first click was). Only the AGENT_BENCH_ACT round trip itself
+ * is timed — page navigation and the target-handle lookup are excluded,
+ * since neither is part of what "action → verified outcome" measures.
  *
  * slow-settle.html is deliberately excluded: it never settles
  * by construction (used by stop.spec.ts to buy time for a mid-flight
@@ -22,18 +28,18 @@
  * action latency.
  */
 import { test, expect } from './fixture';
-import { grant, tabIdFor, agentAct } from './agent-helpers';
+import { grant, tabIdFor, resolveHandle, benchAct } from './agent-helpers';
 
 const ORIGIN = 'http://localhost:5599';
 const TOTAL_ACTIONS = 40;
 const TARGET_P95_MS = 1_500;
 
-const TEMPLATES: Array<{ path: string; instruction: string }> = [
-  { path: 'basic-form.html', instruction: 'type "x" into the full name field' },
-  { path: 'react-form.html', instruction: 'type "Mohd Taha" into the full name field' },
-  { path: 'quill.html', instruction: 'type "Hello there" into the message field' },
-  { path: 'custom-button.html', instruction: 'click Continue' },
-  { path: 'modal-cover.html', instruction: 'click Continue' },
+const TEMPLATES: Array<{ path: string; find: { role?: string; nameIncludes: string }; action: (handle: string) => unknown }> = [
+  { path: 'basic-form.html', find: { nameIncludes: 'Full name' }, action: (h) => ({ verb: 'type', handle: h, text: 'x', mode: 'replace' }) },
+  { path: 'react-form.html', find: { nameIncludes: 'Full name' }, action: (h) => ({ verb: 'type', handle: h, text: 'Mohd Taha', mode: 'replace' }) },
+  { path: 'quill.html', find: { nameIncludes: 'Message' }, action: (h) => ({ verb: 'type', handle: h, text: 'Hello there', mode: 'replace' }) },
+  { path: 'custom-button.html', find: { role: 'button', nameIncludes: 'Continue' }, action: (h) => ({ verb: 'click', handle: h }) },
+  { path: 'modal-cover.html', find: { role: 'button', nameIncludes: 'Continue' }, action: (h) => ({ verb: 'click', handle: h }) },
 ];
 
 test('action → verified outcome is ≤ 1.5s at the p95 over 40 fixture actions', async ({ context, extensionId }) => {
@@ -49,15 +55,17 @@ test('action → verified outcome is ≤ 1.5s at the p95 over 40 fixture actions
   const outcomes: string[] = [];
 
   for (let i = 0; i < TOTAL_ACTIONS; i++) {
-    const { path, instruction } = TEMPLATES[i % TEMPLATES.length];
+    const { path, find, action } = TEMPLATES[i % TEMPLATES.length];
     // eslint-disable-next-line no-await-in-loop
     await page.goto(`${ORIGIN}/${path}`);
     // eslint-disable-next-line no-await-in-loop
     const tabId = await tabIdFor(popup, `${ORIGIN}/${path}`);
+    // eslint-disable-next-line no-await-in-loop
+    const handle = await resolveHandle(popup, tabId, find);   // excluded from the timed window
 
     const t0 = performance.now();
     // eslint-disable-next-line no-await-in-loop
-    const res: any = await agentAct(popup, tabId, instruction);
+    const res: any = await benchAct(popup, tabId, action(handle));
     times.push(performance.now() - t0);
 
     expect(res.status).toBe('success');

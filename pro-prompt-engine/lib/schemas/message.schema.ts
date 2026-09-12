@@ -8,6 +8,7 @@
  * See Docs/planning/phase_1_foundation_preconditions.md §7.1.
  */
 import { z } from 'zod';
+import { ActionRequestSchema } from '@lib/schemas/action.schema';
 
 // ── Shared building blocks ──
 
@@ -202,12 +203,60 @@ export const AgentActRequest = req('AGENT_ACT', z.object({
 // A pending Always-tier approval, answered from the panel's Approve/Reject
 // buttons. The token is the original request's requestId — an approval
 // granted for one action can never be replayed onto another (§9).
+// [Phase 5 §11 task 5.13] repurposed: every real run's Always-tier approvals
+// are now tracked by the offscreen Supervisor (lib/agent/supervisor.ts),
+// not the Copilot panel's old pendingApprovals map — this message now
+// carries a `runId` too, so the handler knows which Supervisor to forward
+// it to.
 export const AgentApprovalResponseRequest = req('AGENT_APPROVAL_RESPONSE', z.object({
+  runId: z.number().int(),
   requestId: z.string().uuid(),
   approve: z.boolean(),
+  // §9.1's "Reject with reason" control — journaled on approval.denied,
+  // never sent to a model (PP-3: enforcement stays outside model reach).
+  reason: z.string().max(300).optional(),
 }));
 
 export const AgentStopRequest = req('AGENT_STOP', z.object({ runId: z.number().int() }));
+
+// [Phase 5 §3, §7, §8, §11 task 5.9] admits a new run: creates the `runs`
+// row in 'planning' state, ensures the offscreen document exists, and
+// starts its Supervisor — which immediately calls the planner (trigger 1,
+// §4.3) and holds at `awaiting_plan_approval`.
+export const AgentAdmitRunRequest = req('AGENT_ADMIT_RUN', z.object({
+  tabId: z.number().int(),
+  goal: z.string().min(1).max(2_000),
+  mode: z.enum(['suggest', 'step', 'supervised']),
+  posture: z.enum(['local-only', 'hybrid']),
+}));
+
+// The plan panel's Start button (approve, optionally with the user's edits
+// already applied) or its Reject. `editedPlan` is the user's version,
+// already validated client-side against PlanSchema by the constrained
+// editor (§8) — re-validated server-side before it is trusted.
+export const AgentPlanApprovalRequest = req('AGENT_PLAN_APPROVAL', z.object({
+  runId: z.number().int(),
+  approve: z.boolean(),
+  editedPlan: z.unknown().optional(),
+}));
+
+export const AgentAskUserAnswerRequest = req('AGENT_ASK_USER_ANSWER', z.object({
+  runId: z.number().int(),
+  answer: z.string().max(500),
+}));
+
+export const AgentPauseRequest = req('AGENT_PAUSE', z.object({ runId: z.number().int() }));
+// Resolves whichever wait the Supervisor is actually in — a plain Pause or
+// a Take-over — the run-state table allows 'running' from both (§4.5), and
+// the panel shows exactly one of the two buttons at a time, so there is
+// never an ambiguity about which the user meant.
+export const AgentResumeRequest = req('AGENT_RESUME', z.object({ runId: z.number().int() }));
+export const AgentTakeOverRequest = req('AGENT_TAKE_OVER', z.object({ runId: z.number().int() }));
+
+// The offscreen Supervisor/Tab Agent's own gate check (lib/agent/gate-client.ts)
+// — the one message that crosses offscreen → service worker for every
+// single action a run wants to take. Never sent by a UI surface.
+export const AgentGateCheckRequest = req('AGENT_GATE_CHECK', ActionRequestSchema);
 
 export const AgentGetRunEventsRequest = req('AGENT_GET_RUN_EVENTS', z.object({ runId: z.number().int() }));
 
@@ -223,6 +272,51 @@ export const AgentListRunsRequest = reqNoPayload('AGENT_LIST_RUNS');
 // production builds.
 export const AgentBenchGateRequest = req('AGENT_BENCH_GATE', z.object({ tabId: z.number().int() }));
 
+// [Phase 5 §16, e2e build only] the actuation/verification e2e suite
+// (actuation.spec.ts, false-confirm.spec.ts, never-tier.spec.ts,
+// scope.spec.ts, stop.spec.ts, copilot.bench.ts — all Phase 3's) drove the
+// gate -> act -> verify pipeline through AGENT_ACT, resolving a plain-
+// language instruction via lib/agent/intent.ts. Phase 5 deletes intent.ts
+// (§2: "Phase 3 labelled it throwaway") — replaced in real runs by the
+// planner + step-resolver, which need a real inference call to produce a
+// plan and are wrong tools for a test asserting "a click on a
+// pointerdown-only control fires the handler" against real Chrome. This
+// takes an already-resolved Action directly (the test finds the handle
+// itself via a plain PERCEIVE_STRUCTURE call, unchanged since Phase 2) and
+// runs the SAME gate -> dispatch -> verify path lib/agent/tab-agent.ts's
+// dispatchPermitted() takes in production, minus planning and admission —
+// the same "skip the part this test isn't about" precedent as
+// AgentBenchGateRequest above.
+export const AgentBenchActRequest = req('AGENT_BENCH_ACT', z.object({
+  tabId: z.number().int(),
+  action: ActionRequestSchema.shape.action,
+}));
+
+export const AgentBenchApproveRequest = req('AGENT_BENCH_APPROVE', z.object({
+  requestId: z.string().uuid(),
+  approve: z.boolean(),
+}));
+
+// [Phase 5 acceptance audit, 2026-09-13, e2e build only] see
+// entrypoints/background.ts's AGENT_BENCH_SET_STATE case — lets
+// tests/e2e/takeover.spec.ts and interrupted.spec.ts drive
+// lib/policy/gate.ts's real RUN_STATE enforcement and
+// lib/agent/reconcile.ts's real halt-on-unreachable logic directly against
+// a bench-created run row, in real Chrome, without needing a live
+// offscreen Supervisor to reach the same `run.state` field through
+// AGENT_PAUSE/AGENT_TAKE_OVER's normal, production path.
+export const AgentBenchSetStateRequest = req('AGENT_BENCH_SET_STATE', z.object({
+  runId: z.number().int(),
+  state: z.enum([
+    'planning', 'awaiting_plan_approval', 'running', 'awaiting_approval',
+    'awaiting_user', 'paused', 'taken_over', 'halted', 'stopped', 'failed', 'completed',
+  ]),
+}));
+
+// [Phase 5 acceptance audit, 2026-09-13, e2e build only] see
+// entrypoints/background.ts's AGENT_BENCH_RECONCILE comment.
+export const AgentBenchReconcileRequest = reqNoPayload('AGENT_BENCH_RECONCILE');
+
 export const ExtensionRequest = z.discriminatedUnion('type', [
   PingRequest, ScoreRequest, RefactorRequest, GenerateRequest,
   GetProfileRequest, SetProfileRequest, GetAllProfilesRequest, SetActiveProfileRequest, DeleteProfileRequest,
@@ -234,7 +328,10 @@ export const ExtensionRequest = z.discriminatedUnion('type', [
   GetPromptHistoryRequest, OpenDashboardRequest, ModelStateChangedRequest,
   GrantOriginRequest, RevokeOriginRequest, GetTabIdRequest, GetActiveGrantsRequest,
   AgentActRequest, AgentApprovalResponseRequest, AgentStopRequest,
-  AgentGetRunEventsRequest, AgentListRunsRequest, AgentBenchGateRequest,
+  AgentGetRunEventsRequest, AgentListRunsRequest, AgentBenchGateRequest, AgentBenchActRequest, AgentBenchApproveRequest,
+  AgentAdmitRunRequest, AgentPlanApprovalRequest, AgentAskUserAnswerRequest,
+  AgentPauseRequest, AgentResumeRequest, AgentTakeOverRequest, AgentGateCheckRequest,
+  AgentBenchSetStateRequest, AgentBenchReconcileRequest,
 ]);
 
 export type ExtensionRequestType = z.infer<typeof ExtensionRequest>;

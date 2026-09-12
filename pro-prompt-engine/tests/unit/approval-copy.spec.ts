@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { gate } from '@lib/policy/gate';
 import * as ownership from '@lib/policy/ownership';
+import * as journal from '@lib/agent/journal';
 import { db } from '@lib/db/dexie-db';
 import type { RunRecord } from '@lib/types/run.types';
 import type { PerceptionSnapshot } from '@lib/schemas/snapshot.schema';
@@ -55,7 +56,12 @@ async function setup(mode: RunRecord['mode'] = 'supervised'): Promise<number> {
     budgets: { maxActions: 40, maxRetriesPerStep: 3, maxPlannerCalls: 30, maxWallClockMs: 720_000 },
     startedAt: Date.now(),
   };
-  return db.runs.add(record);
+  const runId = await db.runs.add(record);
+  // [Phase 5 §6] this file predates goal-anchor and has no plan for its
+  // varied test actions to match — see tests/unit/gate.spec.ts's makeRun()
+  // for the identical, documented reasoning.
+  await journal.append(runId, 'plan.replanned', null, { trigger: 'run_start', fromStepIndex: 0 });
+  return runId;
 }
 
 async function approvalFor(runId: number, action: Action): Promise<ApprovalPrompt> {
@@ -108,6 +114,7 @@ describe('approval prompt — every generated prompt names its target and the ho
       budgets: { maxActions: 40, maxRetriesPerStep: 3, maxPlannerCalls: 30, maxWallClockMs: 720_000 },
       startedAt: Date.now(),
     });
+    await journal.append(runId, 'plan.replanned', null, { trigger: 'run_start', fromStepIndex: 0 });   // see setup()'s comment
     await ownership.record(runId, TAB, {
       ...elementSnap([{ ...SUBMIT_BTN, handle: 'e2', role: 'textbox', name: 'Full name', inputType: 'text' }]),
       origin: GOV, url: `${GOV}/form`,

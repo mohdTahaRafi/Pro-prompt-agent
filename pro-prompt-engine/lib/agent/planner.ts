@@ -26,6 +26,9 @@ export interface PlanInput {
   policy: PlannerPolicy;
   runId?: number;
   signal?: AbortSignal;
+  /** [Phase 5 §4.3] set only for a mid-run replan — see prompts.ts's
+   *  PlanInputForPrompt for the full rationale. */
+  priorPlanNote?: string;
 }
 
 /** Distinct from RouteError: the doc's §8.3 sketch returns `NO_PLANNER` with
@@ -42,7 +45,9 @@ export async function plan(input: PlanInput): Promise<Result<Plan, PlanError>> {
   }
 
   const nonce = generateNonce();
-  const user = renderPlannerUser({ goal: input.goal, policy: input.policy, snapshot: input.snapshot }, nonce);
+  const user = renderPlannerUser(
+    { goal: input.goal, policy: input.policy, snapshot: input.snapshot, priorPlanNote: input.priorPlanNote }, nonce,
+  );
 
   const result = await inferStructured({
     tier: 'planner', posture: posture.posture, system: PLANNER_SYSTEM, user,

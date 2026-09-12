@@ -9,11 +9,13 @@
  * is ordinary "stop the current task, then ask for something else" product
  * behaviour, not a way around Stop — so these tests verify the actual
  * guarantee directly (the flag, the run's own journal, its terminal state)
- * rather than by re-driving AGENT_ACT and expecting it to reuse the
+ * rather than by re-driving an action and expecting it to reuse the
  * now-terminal run.
+ *
+ * [Phase 5 §16] driven via AGENT_BENCH_ACT — see agent-helpers.ts's header.
  */
 import { test, expect } from './fixture';
-import { grant, tabIdFor, agentAct, agentActFireAndForget, agentStop, agentRunEvents } from './agent-helpers';
+import { grant, tabIdFor, resolveHandle, benchAct, benchActFireAndForget, agentStop, agentRunEvents } from './agent-helpers';
 
 const ORIGIN = 'http://localhost:5599';
 
@@ -33,7 +35,7 @@ test('the stop flag is gate-visible within 250ms of the press, and the run reach
   await page.goto(`${ORIGIN}/basic-form.html`);
   const tabId = await tabIdFor(popup, `${ORIGIN}/basic-form.html`);
 
-  const first: any = await agentAct(popup, tabId, 'read the page');
+  const first: any = await benchAct(popup, tabId, { verb: 'read_page' });
   expect(first.data.phase).toBe('done');
   const runId = await runIdForTab(popup, tabId);
   expect(runId).toBeDefined();
@@ -67,12 +69,13 @@ test('pressing Stop mid-action allows the in-flight dispatch to finish but refus
 
   // A quick read first, purely to learn this tab's runId before the slow
   // action starts.
-  await agentAct(popup, tabId, 'read the page');
+  await benchAct(popup, tabId, { verb: 'read_page' });
   const runId = await runIdForTab(popup, tabId);
+  const handle = await resolveHandle(popup, tabId, { nameIncludes: 'Search' });
 
   // Fire the slow action (typing triggers the never-settling suggestions
   // loop, the fixture's own header comment) without awaiting its response.
-  await agentActFireAndForget(popup, tabId, 'type "hello" into the search field');
+  await benchActFireAndForget(popup, tabId, { verb: 'type', handle, text: 'hello', mode: 'replace' });
   // Give it time to actually dispatch (fast) and enter the long
   // post-action settle wait (slow) before pressing Stop.
   await page.waitForTimeout(1_000);

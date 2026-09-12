@@ -5,21 +5,17 @@
  * manifest does not authorise, or a permission is declared that no source
  * file uses.
  *
- * Note on a resolved spec contradiction: task 1.9's acceptance-table cell
- * says the manifest has "no content_scripts key" — read alone that would
- * mean deleting toolbar.content.tsx's own six-AI-host entry too, which no
- * other task asks for. Two other, more specific passages in the same doc
- * disagree with that cell and agree with each other: §8's test-infrastructure
- * table row for no-all-urls.spec.ts ("the built manifest.json contains no
- * content_scripts entry with <all_urls>") and §15's forward-dependency note,
- * which explicitly keeps toolbar.content.tsx's entry until Phase 5 and says
- * outright: "no-all-urls.spec.ts asserts the absence of <all_urls>
- * specifically, not the absence of content_scripts, for exactly this
- * reason." Two independent, detailed passages against one compressed
- * acceptance-cell phrasing — not a coin flip. This suite (and
- * no-all-urls.spec.ts) implements what §14/§15 actually specify: no
- * content_scripts entry matches <all_urls>, not the absence of the key.
- * See Docs/planning/phase_1_foundation_preconditions.md §5.5, §8, §15.
+ * Note on a resolved spec contradiction, now closed: Phase 1 §15 deferred
+ * "no content_scripts key at all" to Phase 5, deliberately keeping
+ * toolbar.content.tsx's static six-AI-host entry alive until then (see
+ * Docs/planning/phase_1_foundation_preconditions.md §5.5, §8, §15 for the
+ * original reasoning). Phase 5 §2/§11 task 5.16 deletes
+ * entrypoints/toolbar.content.tsx outright — the side panel plus the
+ * in-page overlay replace it — which was the LAST static content_scripts
+ * manifest entry (entrypoints/agent.content.ts registers at runtime,
+ * per-grant, via chrome.scripting.registerContentScripts, and so never
+ * appears in the manifest at all). The assertion below is strengthened
+ * accordingly, per Docs/planning/phase_5_agent_loop.md §11 task 5.16.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execSync } from 'node:child_process';
@@ -70,12 +66,11 @@ describe('manifest permissions match usage (PRE-4)', () => {
     expect(manifest.host_permissions ?? []).not.toContain('*://*/*');
   });
 
-  it('has no content_scripts entry matching <all_urls>', () => {
+  // [Phase 5 §11 task 5.16] strengthened from "no <all_urls> entry" to "no
+  // content_scripts key at all" — see the file header.
+  it('has no content_scripts key at all', () => {
     const manifest = readManifest();
-    const entries = manifest.content_scripts ?? [];
-    for (const entry of entries) {
-      expect(entry.matches).not.toContain('<all_urls>');
-    }
+    expect(manifest.content_scripts ?? []).toHaveLength(0);
   });
 
   it('every chrome.<namespace> call site is authorised by a declared permission', () => {
@@ -101,9 +96,6 @@ describe('manifest permissions match usage (PRE-4)', () => {
   it('every declared permission is used by at least one source file', () => {
     const manifest = readManifest();
     const noOwnNamespace = new Set([
-      // sidePanel is declared for Phase 5, which has not landed yet — its
-      // permission is intentionally present ahead of use (wxt.config.ts §4.1).
-      'sidePanel',
       // activeTab has no chrome.activeTab namespace of its own — granting it
       // is what lets chrome.tabs.query / chrome.scripting.executeScript see
       // the current tab's URL and content from the popup (§5.5's table).

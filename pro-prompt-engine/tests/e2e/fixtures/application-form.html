@@ -1,0 +1,76 @@
+<!doctype html>
+<!--
+  J-1 fixture — Docs/planning/phase_5_agent_loop.md's Milestone Definition
+  (§12) and task 5.17's acceptance criterion: "a 14-field fixture form
+  completes with ≥ 12 fields confirmed, Submit held for approval, and ≤ 8
+  planner calls journaled." Exactly 14 fillable controls below (excluding
+  Submit, which is the Always-tier hold this test also asserts) — file
+  attachment ("I will not attach your CV") is the milestone's own flavor
+  text for a mechanism this fixture doesn't need to reproduce literally to
+  satisfy the AC as written.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Job Application</title></head>
+<body>
+  <h1>Apply for this role</h1>
+  <form id="application" aria-label="Job application">
+    <label for="full-name">Full name</label>
+    <input id="full-name" name="full_name">
+
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email">
+
+    <label for="phone">Phone</label>
+    <input id="phone" name="phone" type="tel">
+
+    <label for="address">Street address</label>
+    <input id="address" name="address">
+
+    <label for="city">City</label>
+    <input id="city" name="city">
+
+    <label for="state">State / Province</label>
+    <input id="state" name="state">
+
+    <label for="zip">ZIP / Postal code</label>
+    <input id="zip" name="zip">
+
+    <label for="country">Country</label>
+    <select id="country" name="country">
+      <option value="">Select a country</option>
+      <option value="US">United States</option>
+      <option value="CA">Canada</option>
+      <option value="GB">United Kingdom</option>
+      <option value="IN">India</option>
+      <option value="OTHER">Other</option>
+    </select>
+
+    <label for="linkedin">LinkedIn profile URL</label>
+    <input id="linkedin" name="linkedin" type="url">
+
+    <label for="portfolio">Portfolio or personal website</label>
+    <input id="portfolio" name="portfolio" type="url">
+
+    <label for="years-experience">Years of experience</label>
+    <input id="years-experience" name="years_experience" type="number" min="0">
+
+    <label for="desired-salary">Desired salary</label>
+    <input id="desired-salary" name="desired_salary">
+
+    <label for="start-date">Available start date</label>
+    <input id="start-date" name="start_date" type="date">
+
+    <label for="how-heard">How did you hear about us?</label>
+    <input id="how-heard" name="how_heard">
+
+    <button type="submit" id="submit-application">Submit application</button>
+  </form>
+  <p id="submitted" hidden>submitted</p>
+  <script>
+    document.getElementById('application').addEventListener('submit', function (e) {
+      e.preventDefault();
+      document.getElementById('submitted').hidden = false;
+    });
+  </script>
+</body>
+</html>

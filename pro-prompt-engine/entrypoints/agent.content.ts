@@ -34,6 +34,15 @@ import { computeAccessibleName } from '@lib/page/accname';
 import { classifySensitive } from '@lib/page/sensitive';
 import { actuate } from '@lib/page/actuator';
 import { ActuateMessageSchema } from '@lib/schemas/action.schema';
+// [Phase 5 §9.2] the in-page overlay — GoalBox (no run for this tab) or
+// RunBadge (one is active). Mounted into the shared shadow host
+// (lib/page/overlay/mount.ts) so it shares settle.ts's isOurs() exclusion.
+// Plain DOM classes, not React — see GoalBox.tsx's header for the budget
+// reasoning.
+import { ensureOverlayRoot, teardownOverlayRoot } from '@lib/page/overlay/mount';
+import GoalBox from '@lib/page/overlay/GoalBox';
+import RunBadge from '@lib/page/overlay/RunBadge';
+import type { RunRecord, RunEvent } from '@lib/types/run.types';
 
 export default defineContentScript({
   registration: 'runtime',   // registered by chrome.scripting, never by the manifest
@@ -193,11 +202,118 @@ export default defineContentScript({
       return ElementDescriptorSchema.parse(descriptor);
     }
 
+    // ── Phase 5 §9.2 — the in-page overlay ──
+    //
+    // GoalBox when no run is active for this tab; RunBadge (current step +
+    // Stop) when one is. Polled rather than pushed: this content script is
+    // recreated on every navigation (§9.3's whole reason the side panel,
+    // not this badge, is authoritative), so there is no live subscription
+    // to resume across that boundary anyway — a short poll is simpler and
+    // just as correct.
+    const POLL_MS = 1_200;
+    const TERMINAL_STATES = new Set(['halted', 'stopped', 'failed', 'completed']);
+    let goalBox: GoalBox | null = null;
+    let runBadge: RunBadge | null = null;
+    let highlighted: HTMLElement | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    function clearHighlight() {
+      if (highlighted) { highlighted.style.outline = ''; highlighted.style.outlineOffset = ''; }
+      highlighted = null;
+    }
+
+    function highlightHandle(handle: string | undefined) {
+      clearHighlight();
+      if (!handle) return;
+      const res = registry.resolve(handle, registry.currentEpoch);
+      if (res.kind === 'missing' || res.kind === 'ambiguous') return;
+      const el = res.node as HTMLElement;
+      el.style.outline = '2px solid #2563EB';
+      el.style.outlineOffset = '2px';
+      highlighted = el;
+    }
+
+    function overlayContainer(): HTMLElement {
+      const shadow = ensureOverlayRoot();
+      let container = shadow.getElementById('pp-overlay-app') as HTMLDivElement | null;
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'pp-overlay-app';
+        shadow.appendChild(container);
+      }
+      return container;
+    }
+
+    function showGoalBox() {
+      runBadge?.destroy(); runBadge = null;
+      if (!goalBox) goalBox = new GoalBox(overlayContainer());
+    }
+
+    function showRunBadge(props: import('@lib/page/overlay/RunBadge').RunBadgeProps) {
+      goalBox?.destroy(); goalBox = null;
+      if (!runBadge) runBadge = new RunBadge(overlayContainer());
+      runBadge.update(props);
+    }
+
+    async function stopCurrentRun(runId: number) {
+      await chrome.runtime.sendMessage({ type: 'AGENT_STOP', payload: { runId } }).catch(() => {});
+    }
+
+    async function pollOverlay() {
+      const tabId = await getTabId();
+      if (tabId < 0) return;
+      const runsRes = await chrome.runtime.sendMessage({ type: 'AGENT_LIST_RUNS' }).catch(() => null);
+      const runs = (runsRes?.data ?? []) as (RunRecord & { id: number })[];
+      const run = runs.find((r) => r.roster?.includes(tabId) && !TERMINAL_STATES.has(r.state));
+
+      if (!run) {
+        clearHighlight();
+        showGoalBox();
+        return;
+      }
+
+      const eventsRes = await chrome.runtime.sendMessage({ type: 'AGENT_GET_RUN_EVENTS', payload: { runId: run.id } }).catch(() => null);
+      const events = (eventsRes?.data ?? []) as RunEvent[];
+      const observed = events.filter((e) => e.kind === 'action.observed' && (e.data as any)?.verified);
+      const steps = run.plan?.steps ?? [];
+      const currentIndex = Math.min(observed.length, Math.max(0, steps.length - 1));
+      const current = steps[currentIndex];
+
+      if (current) {
+        const handle = (current.action as any)?.handle as string | undefined;
+        highlightHandle(handle);
+      } else {
+        clearHighlight();
+      }
+
+      const label =
+        run.state === 'awaiting_plan_approval' ? 'Plan ready — open the side panel to review it'
+        : run.state === 'awaiting_approval' ? 'Waiting for your approval — see the side panel'
+        : run.state === 'awaiting_user' ? 'Has a question — see the side panel'
+        : run.state === 'paused' ? 'Paused'
+        : run.state === 'taken_over' ? "You're driving"
+        : current?.intent ?? 'Working…';
+
+      showRunBadge({
+        label,
+        stepPosition: steps.length ? `step ${Math.min(currentIndex + 1, steps.length)} of ${steps.length}` : '',
+        onStop: () => stopCurrentRun(run.id),
+      });
+    }
+
+    pollTimer = setInterval(() => { void pollOverlay(); }, POLL_MS);
+    void pollOverlay();
+
     // Invalidate everything when the document itself changes underneath us.
     ctx.addEventListener(window, 'pagehide', () => registry.invalidateAll('PAGEHIDE'));
     ctx.onInvalidated(() => {
       settle.stop();
       registry.invalidateAll('CTX_INVALIDATED');
+      if (pollTimer) clearInterval(pollTimer);
+      clearHighlight();
+      goalBox?.destroy(); goalBox = null;
+      runBadge?.destroy(); runBadge = null;
+      teardownOverlayRoot();
     });
   },
 });
