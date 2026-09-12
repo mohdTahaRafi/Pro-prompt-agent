@@ -28,7 +28,12 @@ export type RefusalCode =
   | 'CAPABILITY_NOT_GRANTED'
   | 'NEVER_TIER'
   | 'RUN_STATE'
-  | 'STOPPED';
+  | 'STOPPED'
+  // [Phase 5] goal anchor (§6) and the shared budget's gate-side mirror (§4.2).
+  | 'OFF_GOAL'
+  | 'BUDGET_ACTIONS'
+  | 'BUDGET_WALLCLOCK'
+  | 'BUDGET_PLANNER';
 
 /** The user-facing sentence for each refusal code — §4.3's right-hand
  *  column. `{origin}` is interpolated by formatRefusal() below. */
@@ -46,6 +51,10 @@ export const REFUSAL_COPY: Record<RefusalCode, string> = {
   NEVER_TIER: 'I will never type into a password, payment, or one-time-code field.',
   RUN_STATE: 'The task is paused.',
   STOPPED: 'Stopped.',
+  OFF_GOAL: "That action doesn't match the plan you approved.",
+  BUDGET_ACTIONS: "This task has used all the actions I'm allowed for one run.",
+  BUDGET_WALLCLOCK: "This task has been running too long and I'm stopping it.",
+  BUDGET_PLANNER: 'I re-planned too many times for this task and am stopping rather than keep guessing.',
 };
 
 /** Renders a refusal code into the §4.3 user-facing sentence, interpolating

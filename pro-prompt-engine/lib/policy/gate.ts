@@ -17,12 +17,14 @@
  * hit (§4.2, §4.3).
  */
 import { db } from '@lib/db/dexie-db';
-import { getSitePolicy } from '@lib/db/policy-store';
+import { getSitePolicy, type SitePolicy } from '@lib/db/policy-store';
 import { toOrigin, isGranted } from '@lib/policy/scope';
 import * as ownership from '@lib/policy/ownership';
 import { append as journalAppend } from '@lib/agent/journal';
 import { canAct } from '@lib/agent/run-state';
 import { classifyTier, hasUnsavedUserInput } from '@lib/policy/tiers';
+import { anchorCheck } from '@lib/policy/goal-anchor';
+import { readMirror, checkMirror, type BudgetError } from '@lib/agent/budget';
 import { ActionSchema, handleOf, type Action, type ActionRequest } from '@lib/schemas/action.schema';
 import type { RunRecord, RunState } from '@lib/types/run.types';
 import type {
@@ -36,6 +38,8 @@ export const IMPLEMENTED_VERBS: ReadonlySet<Action['verb']> = new Set([
   'read_page', 'read_structure', 'read_element', 'wait_for_settle',
   'scroll', 'click', 'type', 'select',
   'navigate', 'history_back', 'history_forward',
+  // [Phase 5 §10] the two control verbs — ask_user and finish.
+  'ask_user', 'finish',
 ]);
 
 function refuse(code: RefusalCode): ActionDecision {
@@ -119,9 +123,33 @@ export async function gate(req: ActionRequest): Promise<ActionDecision> {
   }
   if (tier === 'never') return refuseAndJournal(run.id!, req.tabId, parsed.data.verb, origin, 'NEVER_TIER');
 
+  // 5.5. GOAL ANCHOR (Phase 5 §6) — an action inconsistent with the run's
+  //      approved plan is refused before the run-state/budget/stop checks,
+  //      which are about WHETHER the run may act at all, not WHETHER this
+  //      particular action serves the goal it was admitted for.
+  const anchored = await anchorCheck(run, parsed.data, target);
+  if (!anchored.ok) return refuseAndJournal(run.id!, req.tabId, parsed.data.verb, origin, 'OFF_GOAL');
+
   // 6. RUN STATE — canAct is answered from a persisted string, with no
-  //    interpreter to rehydrate on a cold service-worker wake.
+  //    interpreter to rehydrate on a cold service-worker wake. 'watch' mode
+  //    is schema-declared but not built until Phase 11 (§7's table) —
+  //    refused here, before canAct is even consulted.
+  if (run.mode === 'watch') return refuseAndJournal(run.id!, req.tabId, parsed.data.verb, origin, 'RUN_STATE');
   if (!canAct(run.state)) return refuseAndJournal(run.id!, req.tabId, parsed.data.verb, origin, 'RUN_STATE');
+
+  // 6.5. BUDGET (Phase 5 §4.2) — checked against the MIRRORED snapshot in
+  //      chrome.storage.session, never against a live Budget instance: the
+  //      Supervisor holding the real counters runs in the offscreen
+  //      document, a different process from this gate, and a wedged or
+  //      compromised Supervisor must not be able to exceed its own budget
+  //      just because it stopped calling drawAction() honestly (task 5.4).
+  const budgetSnap = await readMirror(req.runId);
+  if (budgetSnap) {
+    const budgetCheck = checkMirror(budgetSnap);
+    if (!budgetCheck.ok) {
+      return refuseAndJournal(run.id!, req.tabId, parsed.data.verb, origin, budgetCheck.error as BudgetError as RefusalCode);
+    }
+  }
 
   // 7. STOP STATE — read from chrome.storage.session, which survives a cold
   //    wake and never touches disk. Read LAST among the cheap checks so it
@@ -132,7 +160,7 @@ export async function gate(req: ActionRequest): Promise<ActionDecision> {
 
   // 8. APPROVAL REQUIREMENT — Always tier, or a lower tier under a mode
   //    that requires it (§9).
-  if (tier === 'always' || requiresApproval(tier, run.mode)) {
+  if (tier === 'always' || requiresApproval(tier, run.mode, policy)) {
     const prompt = buildApprovalPrompt(parsed.data, origin, target);
     await journalAppend(run.id!, 'approval.requested', req.tabId, { requestId: req.requestId, prompt, tier });
     return { permitted: false, tier, needsApproval: true, prompt };
@@ -143,17 +171,35 @@ export async function gate(req: ActionRequest): Promise<ActionDecision> {
 }
 
 /**
- * §9 — which modes require approval below Always tier. 'step': every
- * action requires approval, by definition (PR-AUT-3). 'suggest': the
- * product "performs no action until told to proceed" (PR-AUT-2) — Phase 3
- * has no planner to hold a plan for suggest mode to gate on, so the
- * strictest available reading (require approval, same as 'step') is applied
- * rather than silently falling through to supervised behaviour.
- * 'supervised' and 'watch' (PR-AUT-4/5) act freely below Always — the
- * `tier === 'always'` branch above is their entire approval boundary.
+ * §7, §9 — which modes require approval below Always tier.
+ *
+ * 'step' (PR-AUT-3): every action requires approval, every tier — including
+ * Low.
+ *
+ * 'suggest' (PR-AUT-2): "performs no action until told to proceed", THEN
+ * behaves as Supervised (§7's table). Phase 3 had no planner to hold a plan
+ * for suggest mode to gate on, so it applied the strictest available
+ * reading (same as 'step') as a placeholder. Phase 5's Supervisor is what
+ * actually enforces "no action until told to proceed" — it holds at
+ * `awaiting_plan_approval` and issues no ActionRequest at all until the
+ * plan is approved — so BY THE TIME any request reaches this function the
+ * hold has already happened, and 'suggest' collapses into the same rule as
+ * 'supervised' below.
+ *
+ * 'supervised' (PR-AUT-4, default): free on Low, always stops at Always
+ * (the `tier === 'always'` branch above), and Medium follows this origin's
+ * `sitePolicy.mediumRequiresApproval` (§11 task 5.8's "Medium where site
+ * policy says so").
+ *
+ * 'watch' (PR-AUT-5, [Phase 11]) never reaches this function — the gate
+ * refuses it with RUN_STATE before check 8 is ever evaluated.
  */
-function requiresApproval(_tier: Tier, mode: RunRecord['mode']): boolean {
-  return mode === 'step' || mode === 'suggest';
+function requiresApproval(tier: Tier, mode: RunRecord['mode'], policy: SitePolicy | undefined): boolean {
+  if (mode === 'step') return true;
+  if (mode === 'suggest' || mode === 'supervised') {
+    return tier === 'medium' && Boolean(policy?.mediumRequiresApproval);
+  }
+  return false;
 }
 
 // ── §9 — the four-part approval prompt ──

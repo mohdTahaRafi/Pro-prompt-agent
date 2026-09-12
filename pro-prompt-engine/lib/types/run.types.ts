@@ -63,6 +63,12 @@ export interface RunRecord {
 // §5.4 defence 5), `model.output_invalid` (the repair path exhausted its
 // one retry, §6.2), and `plan.produced` (a planner call that returned a
 // schema-valid Plan, §8.3) — the Plan panel's demonstrable artifact.
+// [Phase 5 §8, §10, §11, §16] the plan event chain (`plan.proposed` →
+// `plan.edited` → `plan.approved`/`plan.rejected`), `plan.replanned` (one of
+// the seven triggers fired mid-run — lib/policy/goal-anchor.ts's own
+// `journalHasReplanSince` reads for its presence), the run-lifecycle events
+// a human action produces (`run.paused`, `run.resumed`, `run.taken_over`,
+// `run.interrupted`, `run.stopped`), and the two `ask_user` events (§10).
 export type RunEventKind =
   | 'run.created'
   | 'action.requested'
@@ -77,7 +83,19 @@ export type RunEventKind =
   | 'inference.fallback'
   | 'inference.remote'
   | 'model.output_invalid'
-  | 'plan.produced';
+  | 'plan.produced'
+  | 'plan.proposed'
+  | 'plan.edited'
+  | 'plan.approved'
+  | 'plan.rejected'
+  | 'plan.replanned'
+  | 'run.paused'
+  | 'run.resumed'
+  | 'run.taken_over'
+  | 'run.interrupted'
+  | 'run.stopped'
+  | 'ask_user.asked'
+  | 'ask_user.answered';
 
 export interface RunEvent {
   id?: number;

@@ -40,10 +40,24 @@ export type MessageType =
   // [Phase 3 §15, e2e build only] tests/e2e/gate-wake.bench.ts — see
   // lib/schemas/message.schema.ts's AgentBenchGateRequest comment.
   | 'AGENT_BENCH_GATE'
+  // [Phase 5 §16, e2e build only] see AgentBenchActRequest's comment.
+  | 'AGENT_BENCH_ACT' | 'AGENT_BENCH_APPROVE'
   // [Phase 4] §11's Models tab, §5.3/§5.4's config, §9's inline completion,
   // §8.3/§8.4's Plan panel.
   | 'GET_POSTURE_CAPABILITY' | 'SET_OLLAMA_CONFIG' | 'SET_REMOTE_CONFIG'
-  | 'INLINE_COMPLETE' | 'TOGGLE_AUTOCOMPLETE' | 'AGENT_PLAN';
+  | 'INLINE_COMPLETE' | 'TOGGLE_AUTOCOMPLETE' | 'AGENT_PLAN'
+  // [Phase 5] the real run: admission, the plan-approval chain, ask_user,
+  // and the panel's control bar (§3, §7, §8, §9, §10).
+  | 'AGENT_ADMIT_RUN' | 'AGENT_PLAN_APPROVAL' | 'AGENT_ASK_USER_ANSWER'
+  | 'AGENT_PAUSE' | 'AGENT_RESUME' | 'AGENT_TAKE_OVER'
+  // [Phase 5] the offscreen-bound gate check the Supervisor/Tab Agent make
+  // for every action (lib/agent/gate-client.ts) — never sent by a UI
+  // surface directly.
+  | 'AGENT_GATE_CHECK'
+  // [Phase 5 acceptance audit, 2026-09-13, e2e build only] see
+  // lib/schemas/message.schema.ts's AgentBenchSetStateRequest/
+  // AgentBenchReconcileRequest comments.
+  | 'AGENT_BENCH_SET_STATE' | 'AGENT_BENCH_RECONCILE';
 
 export interface ExtensionResponse<T = unknown> {
   status: 'success' | 'error' | 'not_implemented' | 'unknown_type';

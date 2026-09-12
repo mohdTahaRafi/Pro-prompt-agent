@@ -6,9 +6,16 @@
  * genuinely, never granted — unlike :5599, it is not a mandatory host
  * permission on the e2e build, so chrome.permissions.contains() actually
  * reports false for it.
+ *
+ * An ungranted origin has no registered content script at all
+ * (lib/policy/scope.ts), so every verb here is refused OUT_OF_SCOPE at the
+ * PERCEIVE step, before a gate check on an ActionRequest is even reached —
+ * gate.ts's own checks 3b/3c (tests/unit/gate.spec.ts) cover that boundary
+ * directly. This test is the end-to-end, user-visible half of SC-3: no
+ * matter the verb, nothing reaches an ungranted page.
  */
 import { test, expect } from './fixture';
-import { tabIdFor, agentAct } from './agent-helpers';
+import { tabIdFor, benchAct } from './agent-helpers';
 
 const UNGRANTED_ORIGIN = 'http://localhost:5601';
 
@@ -20,19 +27,15 @@ test('every verb against an ungranted origin is refused OUT_OF_SCOPE — zero ac
   await page.goto(`${UNGRANTED_ORIGIN}/basic-form.html`);
   const tabId = await tabIdFor(popup, `${UNGRANTED_ORIGIN}/basic-form.html`);
 
-  // The content script itself is never even registered on an ungranted
-  // origin (lib/policy/scope.ts) — but the gate's own check 3 is the
-  // property under test here, independent of that: even a hand-built
-  // ActionRequest against this tab is refused before anything is dispatched.
-  const readResult: any = await agentAct(popup, tabId, 'read the page');
+  const readResult: any = await benchAct(popup, tabId, { verb: 'read_page' });
   expect(readResult.data.phase).toBe('refused');
   expect(readResult.data.code).toBe('OUT_OF_SCOPE');
 
-  const clickResult: any = await agentAct(popup, tabId, 'click Submit');
+  const clickResult: any = await benchAct(popup, tabId, { verb: 'click', handle: 'e0' });
   expect(clickResult.data.phase).toBe('refused');
   expect(clickResult.data.code).toBe('OUT_OF_SCOPE');
 
-  const typeResult: any = await agentAct(popup, tabId, 'type "x" into the full name field');
+  const typeResult: any = await benchAct(popup, tabId, { verb: 'type', handle: 'e0', text: 'x', mode: 'replace' });
   expect(typeResult.data.phase).toBe('refused');
   expect(typeResult.data.code).toBe('OUT_OF_SCOPE');
 

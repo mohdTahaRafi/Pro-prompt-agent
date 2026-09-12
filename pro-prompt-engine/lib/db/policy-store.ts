@@ -15,6 +15,14 @@ export interface SitePolicy {
   defaultMode: 'suggest' | 'step' | 'supervised';
   grantedAt: number;
   revokedAt?: number;                 // set rather than deleted, so history is auditable
+  // [Phase 5 §7, §11 task 5.8] Supervised mode acts freely below Always
+  // EXCEPT Medium tier where this origin's policy says otherwise. Not an
+  // indexed Dexie field, so no schema version bump is needed to add it —
+  // absent (undefined) means false, the same default a fresh grantOrigin()
+  // row gets. No dedicated settings UI ships this phase; it exists so
+  // lib/policy/gate.ts's requiresApproval() has a real, testable per-origin
+  // lever rather than a hardcoded always-false.
+  mediumRequiresApproval?: boolean;
 }
 
 export async function getSitePolicy(origin: string): Promise<SitePolicy | undefined> {

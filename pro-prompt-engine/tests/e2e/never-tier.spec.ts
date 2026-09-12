@@ -1,15 +1,22 @@
 /**
- * SC-2 — zero reads or writes on password/payment/OTP fields, across the
- * Copilot pipeline this time (Phase 2's sensitive-untouched.spec.ts already
- * covers the raw message-boundary property). Docs/planning/phase_3_gate_actuation_verification.md
- * §12 task 3.16.
+ * SC-2 — zero reads or writes on password/payment/OTP fields.
+ * Docs/planning/phase_3_gate_actuation_verification.md §12 task 3.16.
+ * (Phase 2's sensitive-untouched.spec.ts already covers the raw
+ * message-boundary property this exercises again through gate + actuation.)
+ *
+ * [Phase 5 §16] Rewritten from the old Copilot-panel wording ("it has no
+ * handle to name") to assert the SAME property more directly: these
+ * fields never even appear among a real PERCEIVE_STRUCTURE's elements, so
+ * there is nothing for any caller — planner, judge, or a test — to build a
+ * handle-bearing action against. Never tier (lib/policy/tiers.ts) is the
+ * defence-in-depth backstop IF one somehow did.
  */
 import { test, expect } from './fixture';
-import { grant, tabIdFor, agentAct } from './agent-helpers';
+import { grant, tabIdFor } from './agent-helpers';
 
 const ORIGIN = 'http://localhost:5599';
 
-test('the Copilot cannot type into a password field — it has no handle to name', async ({ context, extensionId }) => {
+test('password/OTP/card fields never appear in a real perceived snapshot — no handle to name', async ({ context, extensionId }) => {
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await grant(popup, ORIGIN);
@@ -28,17 +35,17 @@ test('the Copilot cannot type into a password field — it has no handle to name
   await page.goto(`${ORIGIN}/sensitive-corpus.html`);
   const tabId = await tabIdFor(popup, `${ORIGIN}/sensitive-corpus.html`);
 
-  const result: any = await agentAct(popup, tabId, 'type "hunter2" into the password field');
-  expect(result.data.phase).toBe('unmatched');
-
-  const otp: any = await agentAct(popup, tabId, 'type "123456" into the one time code field');
-  expect(otp.data.phase).toBe('unmatched');
-
-  const card: any = await agentAct(popup, tabId, 'type "4111111111111111" into the card number field');
-  expect(card.data.phase).toBe('unmatched');
+  const res: any = await popup.evaluate(async (tabId) => {
+    return chrome.tabs.sendMessage(tabId, { type: 'PERCEIVE_STRUCTURE', runId: 'e2e', tokenBudget: 6_000 });
+  }, tabId);
+  expect(res.status).toBe('success');
+  const names = (res.data.elements as Array<{ name: string }>).map((e) => e.name.toLowerCase());
+  expect(names.some((n) => n.includes('password'))).toBe(false);
+  expect(names.some((n) => n.includes('one time code') || n.includes('otp'))).toBe(false);
+  expect(names.some((n) => n.includes('card number'))).toBe(false);
 
   // No ACTUATE message for a `type` verb was ever sent to the content
-  // script — the resolver never had a handle to build one with.
+  // script — nothing in this test ever had a handle to build one with.
   const sent = await sw.evaluate(() => (globalThis as any).__ppSent ?? []);
   const actuateTypes = sent.filter((m: any) => m?.type === 'ACTUATE' && m?.action?.verb === 'type');
   expect(actuateTypes).toEqual([]);

@@ -20,9 +20,14 @@ import type { Verb } from '@lib/schemas/action.schema';
 
 export const AGENT_SCRIPT_ID_PREFIX = 'pp-agent-';
 
+// [Phase 5 §10] ask_user/finish added — they act on the run itself, never
+// the page (lib/policy/goal-anchor.ts's CONTROL_VERBS), so there is no
+// per-site reason a grant would ever want to withhold them; every run
+// needs a way to ask a question or declare itself finished.
 export const DEFAULT_CAPABILITIES: Verb[] = [
   'read_page', 'read_structure', 'read_element', 'wait_for_settle',
   'scroll', 'click', 'type', 'select', 'navigate', 'history_back', 'history_forward',
+  'ask_user', 'finish',
 ];
 
 /** Normalise any URL to the origin form used as the sitePolicy primary key. */

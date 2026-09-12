@@ -17,8 +17,19 @@ import { vi, beforeEach } from 'vitest';
 
 type Listener = (message: any, sender: any, sendResponse: (r?: any) => void) => boolean | void;
 
+// [Phase 5] chrome.storage.onChanged — a SINGLE cross-area event every
+// storage area's set()/remove()/clear() fires into, exactly like the real
+// API. lib/agent/supervisor.ts listens on this directly (filtered to
+// area === 'session') so a Stop pressed while it is blocked in a
+// pause/approval/ask_user wait unblocks it instantly rather than only being
+// discovered on the gate's next check.
+type ChangeListener = (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, areaName: string) => void;
+const storageChangeListeners: ChangeListener[] = [];
+
 class MemoryStorageArea {
   private store = new Map<string, unknown>();
+
+  constructor(private readonly areaName: string) {}
 
   get(keys?: string | string[] | Record<string, unknown> | null): Promise<Record<string, unknown>> {
     if (keys == null) return Promise.resolve(Object.fromEntries(this.store));
@@ -34,7 +45,12 @@ class MemoryStorageArea {
   }
 
   set(items: Record<string, unknown>): Promise<void> {
-    for (const [k, v] of Object.entries(items)) this.store.set(k, v);
+    const changes: Record<string, { oldValue?: unknown; newValue?: unknown }> = {};
+    for (const [k, v] of Object.entries(items)) {
+      changes[k] = { oldValue: this.store.get(k), newValue: v };
+      this.store.set(k, v);
+    }
+    for (const l of storageChangeListeners) l(changes, this.areaName);
     return Promise.resolve();
   }
 
@@ -52,8 +68,8 @@ class MemoryStorageArea {
   __dump(): Record<string, unknown> { return Object.fromEntries(this.store); }
 }
 
-function makeStorageArea(opts: { withAccessLevel?: boolean } = {}) {
-  const area = new MemoryStorageArea();
+function makeStorageArea(areaName: string, opts: { withAccessLevel?: boolean } = {}) {
+  const area = new MemoryStorageArea(areaName);
   // Support both the promise style (await chrome.storage.local.get(...))
   // and the callback style (chrome.storage.local.get(..., cb)) — the
   // codebase uses both.
@@ -132,6 +148,28 @@ function makeScriptingDouble() {
 
 function makeRuntimeDouble() {
   const listeners: Listener[] = [];
+  // [Phase 5 acceptance audit, 2026-09-13] lib/model/offscreen-bridge.ts's
+  // ensureOffscreen() now waits for a real HEARTBEAT_PING round-trip before
+  // it considers the offscreen document ready (the fix for a real readiness
+  // race found against actual Chrome — see that file's header). Unit tests
+  // exercise ensureOffscreen()/askOffscreen() against this synchronous,
+  // in-process double, which has no equivalent "listener not registered
+  // yet" window to simulate, and most such tests only register a listener
+  // for the ONE message type they care about (e.g. LIST_RUNS) — they were
+  // never written to also answer a health-check ping. `offscreenReady`
+  // (default true) answers HEARTBEAT_PING as a last resort, ONLY once every
+  // registered listener has been tried and none answered — never
+  // competing with a real listener for priority. offscreen-bridge.spec.ts
+  // sets it false to simulate "not ready yet" without needing to out-race
+  // this fallback.
+  let offscreenReady = true;
+  // Mirrors real chrome.runtime.getContexts()'s job: report whether the
+  // offscreen document has been created. Stateful (not a hardcoded []) so
+  // lib/model/offscreen-bridge.ts's own "already exists, just verify
+  // readiness" branch is reachable in tests, not only its "create fresh"
+  // branch — installChromeDouble() wires chrome.offscreen.createDocument to
+  // __offscreenDocumentCreated below.
+  let documentCreated = false;
   return {
     onMessage: {
       addListener: (l: Listener) => listeners.push(l),
@@ -157,13 +195,21 @@ function makeRuntimeDouble() {
           // handlers are the first callers that actually exercise this path.
           if (keepAlive) anyAsync = true;
         }
-        if (!responded && !anyAsync) resolve(undefined);
+        if (!responded && !anyAsync) {
+          if (offscreenReady && message?.target === 'offscreen' && message.type === 'HEARTBEAT_PING') {
+            resolve({ status: 'alive' });
+          } else {
+            resolve(undefined);
+          }
+        }
       });
     }),
     getURL: (path: string) => `chrome-extension://test-extension-id${path.startsWith('/') ? path : '/' + path}`,
-    getContexts: vi.fn(async () => []),
+    getContexts: vi.fn(async () => (documentCreated ? [{}] : [])),
     onInstalled: { addListener: vi.fn() },
     onStartup: { addListener: vi.fn() },
+    __setOffscreenReady: (v: boolean) => { offscreenReady = v; },
+    __offscreenDocumentCreated: () => { documentCreated = true; },
   };
 }
 
@@ -176,6 +222,7 @@ function makeRuntimeDouble() {
  */
 function makeTabsDouble() {
   const tabs = new Map<number, { id: number; url?: string }>();
+  const removedListeners: Array<(tabId: number) => void> = [];
   return {
     query: vi.fn(async () => []),
     sendMessage: vi.fn(async () => undefined),
@@ -193,29 +240,50 @@ function makeTabsDouble() {
     }),
     goBack: vi.fn(async () => {}),
     goForward: vi.fn(async () => {}),
+    // [Phase 5] lib/agent/tab-roster.ts's watch()/unwatch() — a closed tab
+    // ends its run (task 5.2).
+    onRemoved: {
+      addListener: (l: (tabId: number) => void) => removedListeners.push(l),
+      removeListener: (l: (tabId: number) => void) => {
+        const i = removedListeners.indexOf(l);
+        if (i >= 0) removedListeners.splice(i, 1);
+      },
+    },
     __setTab(id: number, url: string) { tabs.set(id, { id, url }); },
-    __removeTab(id: number) { tabs.delete(id); },
+    __removeTab(id: number) {
+      tabs.delete(id);
+      for (const l of removedListeners) l(id);
+    },
     __tabs: tabs,
   };
 }
 
 export function installChromeDouble() {
+  storageChangeListeners.length = 0;
+  const runtimeDouble = makeRuntimeDouble();
   const chromeDouble = {
     storage: {
-      local: makeStorageArea(),
-      session: makeStorageArea({ withAccessLevel: true }),
-      sync: makeStorageArea(),
+      local: makeStorageArea('local'),
+      session: makeStorageArea('session', { withAccessLevel: true }),
+      sync: makeStorageArea('sync'),
+      onChanged: {
+        addListener: (l: ChangeListener) => storageChangeListeners.push(l),
+        removeListener: (l: ChangeListener) => {
+          const i = storageChangeListeners.indexOf(l);
+          if (i >= 0) storageChangeListeners.splice(i, 1);
+        },
+      },
     },
     permissions: makePermissionsDouble(),
     scripting: makeScriptingDouble(),
-    runtime: makeRuntimeDouble(),
+    runtime: runtimeDouble,
     tabs: makeTabsDouble(),
     alarms: {
       create: vi.fn(),
       onAlarm: { addListener: vi.fn() },
     },
     offscreen: {
-      createDocument: vi.fn(async () => {}),
+      createDocument: vi.fn(async () => { (runtimeDouble as any).__offscreenDocumentCreated(); }),
     },
   };
   (globalThis as any).chrome = chromeDouble;

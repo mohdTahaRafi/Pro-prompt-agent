@@ -1,0 +1,21 @@
+<!doctype html>
+<!--
+  Overlay navigation fixture — Docs/planning/phase_5_agent_loop.md §9.2/§9.3,
+  §11 tasks 5.11/5.12: "the overlay is recreated after navigation" and
+  "stop from the panel during a navigation (when the overlay does not
+  exist) still halts". A real link click is a real top-level navigation —
+  the content script (and the overlay it mounts) is torn down and
+  re-injected fresh on the destination page, exactly like closing and
+  reopening a tab, which is the scenario these two tasks describe.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Navigating Form</title></head>
+<body>
+  <h1>Step 1</h1>
+  <form id="step1" aria-label="Step 1">
+    <label for="note">A note</label>
+    <input id="note" name="note">
+  </form>
+  <a id="continue-link" href="basic-form.html">Continue</a>
+</body>
+</html>

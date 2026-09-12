@@ -87,6 +87,20 @@ async function ensurePromptApiBase(system: string): Promise<BaseResult> {
   return { ok: true, value: promptApiBase };
 }
 
+// ═══ Agent Loop — Supervisor registry (Phase 5 §3.1) ═══
+//
+// Keyed by runId. The service worker calls ensureOffscreen() before
+// admitting a run and posts RUN_ADMITTED here; entrypoints/background.ts's
+// reconcileRuns() asks LIST_RUNS on every SW wake to find any `runs` row in
+// a non-terminal state whose Supervisor is NOT in this map — that run is
+// interrupted (§3.1). Nothing about a run lives ONLY in this map: the
+// Supervisor itself re-derives everything from `db.runs`/`db.runEvents` on
+// construction, so this registry is purely "which Supervisors are alive
+// right now", never a source of run state.
+import { Supervisor, type RunAdmitted } from '@lib/agent/supervisor';
+
+const supervisors = new Map<number, Supervisor>();
+
 // ═══ Keep-Alive: Prevent VRAM eviction ═══
 let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
 let gpuDevice: GPUDevice | null = null;
@@ -214,6 +228,85 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             status: 'alive',
             data: { state: modelState, model: currentModel },
           };
+
+        // ═══ Agent Loop (Phase 5 §3.1) ═══
+
+        case 'RUN_ADMITTED': {
+          const admitted = message.payload as RunAdmitted;
+          const supervisor = new Supervisor(admitted);
+          supervisors.set(admitted.runId, supervisor);
+          // Not awaited — a run is multi-minute and this handler must
+          // return immediately so RUN_ADMITTED's own response resolves.
+          // Errors are caught so an unhandled rejection can never leave the
+          // registry entry dangling with no journal explanation.
+          void supervisor.run()
+            .catch((err) => console.error('[Offscreen] Supervisor.run() threw', admitted.runId, err))
+            .finally(() => supervisors.delete(admitted.runId));
+          // `data`, not just `status` — lib/agent/reconcile.ts's
+          // askOffscreen() strips a response down to `res?.data`, so
+          // entrypoints/background.ts's admitRun() needs a real value here
+          // to tell "the Supervisor was actually constructed" apart from
+          // "the message never reached anyone" (askOffscreen() resolves
+          // `undefined` for both a dropped message AND a response with no
+          // `data` field — this run acknowledges explicitly to be
+          // distinguishable from that failure mode).
+          return { status: 'success', data: { started: true } };
+        }
+
+        case 'LIST_RUNS':
+          return { data: [...supervisors.keys()] };
+
+        // [Phase 5 acceptance audit, 2026-09-13] all six cases below used to
+        // act only `?.` — a Supervisor absent from the registry (the run
+        // already ended, RUN_ADMITTED never actually reached this document,
+        // or this offscreen instance restarted mid-run) meant the message
+        // was silently a no-op, and the case still unconditionally returned
+        // `{status:'success'}` — the same "swallowed failure, false
+        // success" shape RUN_ADMITTED had (see offscreen-bridge.ts's
+        // header). `found` lets entrypoints/background.ts's callers tell a
+        // real acknowledgment apart from a run nobody could reach, instead
+        // of reporting success either way.
+        case 'PLAN_APPROVAL_RESPONSE': {
+          const { runId, approve, editedPlan } = message.payload as { runId: number; approve: boolean; editedPlan?: unknown };
+          const found = supervisors.has(runId);
+          supervisors.get(runId)?.respondPlanApproval(approve, editedPlan as any);
+          return { data: { found } };
+        }
+
+        case 'ACTION_APPROVAL_RESPONSE': {
+          const { runId, requestId, approve, reason } = message.payload as { runId: number; requestId: string; approve: boolean; reason?: string };
+          const found = supervisors.has(runId);
+          supervisors.get(runId)?.respondActionApproval(requestId, approve, reason);
+          return { data: { found } };
+        }
+
+        case 'ASK_USER_RESPONSE': {
+          const { runId, answer } = message.payload as { runId: number; answer: string };
+          const found = supervisors.has(runId);
+          supervisors.get(runId)?.respondAskUser(answer);
+          return { data: { found } };
+        }
+
+        case 'PAUSE_RUN': {
+          const { runId } = message.payload as { runId: number };
+          const found = supervisors.has(runId);
+          await supervisors.get(runId)?.pause();
+          return { data: { found } };
+        }
+
+        case 'RESUME_RUN': {
+          const { runId } = message.payload as { runId: number };
+          const found = supervisors.has(runId);
+          await supervisors.get(runId)?.resume();
+          return { data: { found } };
+        }
+
+        case 'TAKE_OVER_RUN': {
+          const { runId } = message.payload as { runId: number };
+          const found = supervisors.has(runId);
+          await supervisors.get(runId)?.takeOver();
+          return { data: { found } };
+        }
 
         // ═══ Prompt API (§5.1) ═══
 

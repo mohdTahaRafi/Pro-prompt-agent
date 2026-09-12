@@ -7,6 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { gate, IMPLEMENTED_VERBS } from '@lib/policy/gate';
 import * as ownership from '@lib/policy/ownership';
+import * as journal from '@lib/agent/journal';
 import { db } from '@lib/db/dexie-db';
 import type { RunRecord } from '@lib/types/run.types';
 import type { PerceptionSnapshot } from '@lib/schemas/snapshot.schema';
@@ -30,6 +31,15 @@ async function grantChrome(origin: string) {
   (chrome.permissions as any).__granted.add(`${origin}/*`);
 }
 
+// [Phase 5 §6] This file exercises checks 1-4 and 6-8 in isolation — the
+// new check 5.5 (goal anchor, lib/policy/goal-anchor.ts) is a separate,
+// additive concern with its own suite (tests/unit/goal-anchor.spec.ts).
+// This predates goal anchor and constructs run rows directly, with no plan
+// for any of its varied test actions to match — so every run made here
+// carries a `plan.replanned` journal marker, which goal-anchor.ts's
+// documented "at any point in this run" escape hatch treats as license for
+// any action (its own header explains why that scoping, not a per-step
+// range, is the deliberate decision).
 async function makeRun(overrides: Partial<RunRecord> = {}): Promise<number> {
   const record: RunRecord = {
     goal: '', state: 'running', mode: 'supervised', posture: 'local-only', backend: 'dom',
@@ -38,7 +48,9 @@ async function makeRun(overrides: Partial<RunRecord> = {}): Promise<number> {
     startedAt: Date.now(),
     ...overrides,
   };
-  return db.runs.add(record);
+  const id = await db.runs.add(record);
+  await journal.append(id, 'plan.replanned', null, { trigger: 'run_start', fromStepIndex: 0 });
+  return id;
 }
 
 const CONTINUE = {

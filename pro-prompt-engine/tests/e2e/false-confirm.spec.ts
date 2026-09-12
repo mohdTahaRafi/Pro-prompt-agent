@@ -7,7 +7,7 @@
  * `verified !== 'confirmed'` and IS the assertion that fails the build.
  */
 import { test, expect } from './fixture';
-import { grant, tabIdFor, agentAct, agentApprove } from './agent-helpers';
+import { grant, tabIdFor, resolveHandle, benchAct, benchApprove } from './agent-helpers';
 
 const ORIGIN = 'http://localhost:5599';
 
@@ -19,12 +19,13 @@ test('a swallowed submit click never reads as confirmed', async ({ context, exte
   const page = await context.newPage();
   await page.goto(`${ORIGIN}/swallowed-submit.html`);
   const tabId = await tabIdFor(popup, `${ORIGIN}/swallowed-submit.html`);
+  const handle = await resolveHandle(popup, tabId, { nameIncludes: 'Submit application' });
 
-  const requested: any = await agentAct(popup, tabId, 'click Submit application');
+  const requested: any = await benchAct(popup, tabId, { verb: 'click', handle });
   // A submit-type control is Always tier (§5.2) — it holds for approval.
   expect(requested.data.phase).toBe('needs_approval');
 
-  const approved: any = await agentApprove(popup, requested.data.requestId, true);
+  const approved: any = await benchApprove(popup, requested.data.requestId, true);
   expect(approved.data.phase).toBe('done');
 
   // THE GATE.
