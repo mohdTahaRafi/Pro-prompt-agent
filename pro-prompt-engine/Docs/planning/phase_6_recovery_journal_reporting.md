@@ -5,6 +5,13 @@
 **PRD basis:** PR-REC-1…10, PR-RUN-1…6, PR-TRU-1…4, PR-VER-7, PR-SEC-15, PR-PRV-4, PP-5, PP-6, PP-9, J-2, J-3, SC-4, SC-5, SC-8
 **Depends on:** Phases 1–5 in full
 
+> **Status as merged (2026-09-17): tasks 6.1–6.13 complete and verified. Tasks 6.14, 6.15, and 6.16 are NOT complete** — committed anyway, on explicit instruction, so the completed majority isn't left stranded uncommitted while the open items are tracked openly instead of silently.
+>
+> - **6.14 (J-2, `extract.spec.ts`) and 6.15 (J-3, `settings.spec.ts`)**: both specs are written and drive the real pipeline (real Ollama planner call via the relay-backend fix, real Supervisor/TabAgent loop, real content script — confirmed working end-to-end). Both currently **fail**, reproduced 4/4 across the two Ollama models installed in this environment (`llama3:8b-instruct`, `qwen2.5:1.5b`): the planner call completes, but its JSON output fails `PlanSchema` validation even after the one allowed repair attempt, in four different ways. This is a local-model instruction-following capability ceiling under this repo's deliberate no-grammar-constrained-decoding design for the planner tier (see `lib/model/engines/ollama.ts`'s header for the llama.cpp GBNF bug that decision avoids) — not a bug in the recovery/journal/reporter code, which behaved correctly (honest `model.output_invalid` failure) every time. Closing this requires either a stronger model (a remote API key — Groq is already wired as the default provider via `SET_REMOTE_CONFIG`/`lib/model/engines/remote.ts` — or a larger local model than this machine currently has installed/can run) or grammar-constrained decoding for a schema shape that doesn't trip the GBNF bug. Neither was available at merge time.
+> - **6.16 (§10 performance validation, "every row met")**: not fully met. Met: the `WRITE_REJECTED` bench (recorded), both journal/traceability hard gates (0, as required), and the suspicion false-positive check (0 halts, though measured over the 24 real fixtures this suite has rather than the doc's literal 30). **Not built**: the OBSCURED recovery corpus of 12 real banner shapes (only ~2 real shapes exist today); the eval-set-dependent rows (MISSING_CAPABILITY rate, deterministic-verification share, planner-calls-on-J-3 over 20 runs) — none of these have an eval set or a completing J-2/J-3 run to draw from yet.
+>
+> See the `pro-prompt-agent-phase6-status` memory entry (2026-09-17 acceptance-audit session) for the full evidence trail. Do not mark Phase 6 fully complete, and do not begin Phase 7 work, until 6.14/6.15/6.16 are re-audited and pass.
+
 ---
 
 ## 1. Objective

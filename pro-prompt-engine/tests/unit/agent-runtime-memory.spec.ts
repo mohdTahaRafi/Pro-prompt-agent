@@ -44,7 +44,15 @@ function snapshot(elements: PerceptionSnapshot['elements'], epoch = 1): Percepti
   return {
     runId: 'r', tabId: TAB, epoch, url: `${ORIGIN}/`, origin: ORIGIN, title: '', settled: true,
     settleWaitedMs: 0, settleCalibration: 'visible', epochSuspect: false, elements, excludedCount: 0,
-    regions: [], unreachableRegions: [], buildMs: 1,
+    // [Phase 6 §4 row 2 — verification-rate collapse] a monotonically
+    // growing region total gives lib/page/verifier.ts's click case a real
+    // 'count' confirmation signal every step (post.total > pre.total), so
+    // this 40-action stress run exercises real memory growth rather than
+    // tripping the new "acting blind" detector (six unconfirmed verdicts in
+    // a row correctly ends a run early, which a flat empty-regions fixture
+    // — accurate for Phase 5, superseded here — would do well before 40).
+    regions: [{ regionId: 'form:0', label: 'fields', complete: true, shown: epoch, total: epoch }],
+    unreachableRegions: [], buildMs: 1,
   };
 }
 

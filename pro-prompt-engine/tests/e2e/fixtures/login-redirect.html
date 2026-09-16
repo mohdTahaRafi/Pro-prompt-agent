@@ -1,0 +1,34 @@
+<!doctype html>
+<!--
+  Phase 6 §3.4, task 6.4 — AUTH_REQUIRED: "a fixture that redirects to a
+  login form mid-run". Modelled as a session-timeout login form appearing
+  IN PLACE (a real, common pattern — a modal or in-page swap, not
+  necessarily a full top-level navigation) rather than a real `<a href>`
+  navigation: a plain link click's own browser-driven navigation races the
+  actuator's response across the content-script teardown boundary
+  (lib/actuation/dom-backend.ts's own header explains why `navigate` is
+  dispatched from the service worker instead, for exactly this reason) —
+  proving AUTH_REQUIRED's detection itself does not need re-proving that
+  separate, already-solved navigation problem. The password field that
+  appears is excluded from every snapshot by lib/page/perception.ts's
+  sensitive-field exclusion (same mechanism tests/e2e/never-tier.spec.ts
+  exercises), which is exactly the excludedCount jump
+  lib/agent/tab-agent.ts's performAndVerify() reads for AUTH_REQUIRED (§3.4).
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Your account</title></head>
+<body>
+  <h1>Your account</h1>
+  <button id="continue-btn" type="button">Continue</button>
+  <div id="login-area"></div>
+  <script>
+    document.getElementById('continue-btn').addEventListener('click', () => {
+      document.getElementById('login-area').innerHTML =
+        '<h2>Session expired — sign in</h2>' +
+        '<label for="username">Username</label><input id="username" type="text" autocomplete="username">' +
+        '<label for="password">Password</label><input id="password" type="password" autocomplete="current-password">' +
+        '<button type="submit">Sign in</button>';
+    });
+  </script>
+</body>
+</html>

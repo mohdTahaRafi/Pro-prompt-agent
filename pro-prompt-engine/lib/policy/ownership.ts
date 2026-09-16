@@ -1,11 +1,15 @@
 /**
- * Ownership — the gate's shadow ledger of handles. Service worker only.
+ * Ownership — the gate's shadow ledger of handles.
  * Docs/planning/phase_3_gate_actuation_verification.md §4.4.
  *
  * The gate cannot see the content script's registry — that lives in the
  * page's isolated world. So the gate keeps its own record: when a snapshot
- * crosses into the service worker, record() stores {runId, tabId, epoch,
- * handle → descriptor} in chrome.storage.session.
+ * crosses into the service worker (or, since Phase 5, the offscreen
+ * document's TabAgent — lib/agent/tab-agent.ts calls record() directly),
+ * record() stores {runId, tabId, epoch, handle → descriptor} in
+ * chrome.storage.session, via lib/platform/storage.ts's storageArea() so it
+ * still works from the offscreen document, which has no chrome.storage of
+ * its own (that module's header).
  *
  * Why chrome.storage.session rather than memory: the service worker is
  * terminated on idle and the gate is routinely cold-started. An in-memory
@@ -27,6 +31,7 @@
  * doesn't need to remember what an old epoch looked like to know that a
  * request against it is stale, only that the epoch it holds now disagrees.
  */
+import { storageArea } from '@lib/platform/storage';
 import type { PerceptionSnapshot } from '@lib/schemas/snapshot.schema';
 import type { LedgerDescriptor } from '@lib/types/agent.types';
 
@@ -39,12 +44,12 @@ type RunLedger = Record<number, TabLedger>;   // keyed by tabId
 const key = (runId: number) => `own:${runId}`;
 
 async function load(runId: number): Promise<RunLedger> {
-  const store = (await chrome.storage.session.get(key(runId)))[key(runId)] as RunLedger | undefined;
+  const store = (await storageArea('session').get(key(runId)))[key(runId)] as RunLedger | undefined;
   return store ?? {};
 }
 
 async function save(runId: number, store: RunLedger): Promise<void> {
-  await chrome.storage.session.set({ [key(runId)]: store });
+  await storageArea('session').set({ [key(runId)]: store });
 }
 
 export async function record(runId: number, tabId: number, snap: PerceptionSnapshot): Promise<void> {
@@ -110,5 +115,5 @@ export async function forTab(runId: number, tabId: number): Promise<TabLedger | 
 
 /** Test/cleanup only — drops a run's entire ledger. */
 export async function clear(runId: number): Promise<void> {
-  await chrome.storage.session.remove(key(runId));
+  await storageArea('session').remove(key(runId));
 }

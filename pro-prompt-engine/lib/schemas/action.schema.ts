@@ -98,6 +98,18 @@ export const ActuateMessageSchema = z.object({
   epoch: z.number().int().positive(),
 });
 
+/** [Phase 6 §3.2] The one message lib/actuation/dom-backend.ts's
+ *  dismissOverlay() sends to entrypoints/agent.content.ts to run
+ *  lib/page/overlay-dismiss.ts's single attempt against the given target,
+ *  before the ORIGINAL action (also carried, so the content script does
+ *  not need a second round trip to re-resolve it) is retried. */
+export const DismissOverlayMessageSchema = z.object({
+  type: z.literal('DISMISS_OVERLAY'),
+  runId: z.number().int(),
+  handle: HandleSchema,
+  epoch: z.number().int().positive(),
+});
+
 /** Pulls the `handle` field out of an action, for actions that carry one.
  *  Central so the gate and the actuator agree on what "the target" means for
  *  each verb — a second, drifted copy of this switch is exactly how a

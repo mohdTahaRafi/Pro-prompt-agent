@@ -46,11 +46,15 @@ import { ActionRequestSchema, handleOf } from '@lib/schemas/action.schema';
 import * as ownership from '@lib/policy/ownership';
 import { domBackend } from '@lib/actuation/dom-backend';
 import { verify } from '@lib/page/verifier';
+import { buildReport } from '@lib/agent/reporter';
+import { TabAgent } from '@lib/agent/tab-agent';
+import { Budget } from '@lib/agent/budget';
 import type { ExtensionMessage, ExtensionResponse } from '@lib/types/message.types';
 import type { Profile } from '@lib/types/profile.types';
 import type { Snippet } from '@lib/types/snippet.types';
 import type { RunRecord } from '@lib/types/run.types';
 import type { Plan } from '@lib/schemas/plan.schema';
+import { PlanStepSchema } from '@lib/schemas/plan.schema';
 import type { Action } from '@lib/schemas/action.schema';
 import type { Posture } from '@lib/model/posture';
 
@@ -63,6 +67,28 @@ export default defineBackground(() => {
   // door. Harmless to call every SW start; setAccessLevel is idempotent.
   chrome.storage.session.setAccessLevel?.({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' })
     .catch((e: unknown) => console.error('[SW] storage.session.setAccessLevel failed', e));
+
+  // [Phase 6 e2e investigation, 2026-09-13] chrome.storage.onChanged is also
+  // absent from the offscreen document, and lib/agent/supervisor.ts's STOP
+  // listener needs it (§3.7.19). Broadcasting every change targeted at
+  // 'offscreen' costs nothing when no offscreen document exists yet
+  // (sendMessage with no receiver just rejects, caught here) and is how
+  // lib/platform/storage.ts's storageChanged.addListener() re-dispatches to
+  // whatever was registered through it.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    chrome.runtime.sendMessage({ target: 'offscreen', type: 'STORAGE_CHANGED', payload: { changes, area } })
+      .catch(() => {});
+  });
+
+  // [Phase 6 e2e investigation, 2026-09-13] chrome.tabs.onRemoved is
+  // likewise absent from the offscreen document; lib/agent/tab-roster.ts's
+  // watch() needs it (a closed tab must interrupt its run promptly). Same
+  // broadcast pattern as chrome.storage.onChanged just above — see
+  // lib/platform/tabs.ts's header.
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    chrome.runtime.sendMessage({ target: 'offscreen', type: 'TABS_REMOVED', payload: { tabId } })
+      .catch(() => {});
+  });
 
   // ════════════════════════════════════════
   // Phase 5 — Run admission, the offscreen relay, and reconciliation (§3,
@@ -591,6 +617,64 @@ export default defineBackground(() => {
         return { status: 'success', data: decision };
       }
 
+      // [Phase 6 e2e investigation, 2026-09-13, SHIPS IN PRODUCTION — see
+      // lib/platform/storage.ts's header] chrome.storage is permanently
+      // absent from the offscreen document. Every offscreen-resident
+      // chrome.storage.{local,session} call goes through storageArea(),
+      // which relays here — the one context chrome.storage always is.
+      case 'STORAGE_RELAY_GET': {
+        const { area, keys } = message.payload as { area: 'local' | 'session'; keys: string | string[] | null };
+        const data = await chrome.storage[area].get(keys ?? undefined);
+        return { status: 'success', data };
+      }
+      case 'STORAGE_RELAY_SET': {
+        const { area, items } = message.payload as { area: 'local' | 'session'; items: Record<string, unknown> };
+        await chrome.storage[area].set(items);
+        return { status: 'success' };
+      }
+      case 'STORAGE_RELAY_REMOVE': {
+        const { area, keys } = message.payload as { area: 'local' | 'session'; keys: string | string[] };
+        await chrome.storage[area].remove(keys);
+        return { status: 'success' };
+      }
+
+      // [Phase 6 e2e investigation, 2026-09-13, SHIPS IN PRODUCTION — see
+      // lib/actuation/relay-backend.ts's header] chrome.tabs is likewise
+      // absent from the offscreen document, so lib/agent/tab-agent.ts calls
+      // domBackend through these three instead of importing it directly
+      // when running there. Same real domBackend background.ts already
+      // imports (AGENT_BENCH_ACT above); its Result is already
+      // JSON-serialisable, so it is returned verbatim.
+      case 'AGENT_ACTUATION_PERCEIVE': {
+        const { tabId, runId, req } = message.payload as { tabId: number; runId: number; req: { region?: string; tokenBudget?: number } };
+        const data = await domBackend.perceive(tabId, runId, req);
+        return { status: 'success', data };
+      }
+      case 'AGENT_ACTUATION_ACT': {
+        const { tabId, runId, action, epoch } = message.payload as { tabId: number; runId: number; action: Action; epoch: number };
+        const data = await domBackend.act(tabId, runId, action, epoch);
+        return { status: 'success', data };
+      }
+      case 'AGENT_ACTUATION_DISMISS_OVERLAY': {
+        const { tabId, runId, handle, epoch } = message.payload as { tabId: number; runId: number; handle: string; epoch: number };
+        const data = await domBackend.dismissOverlay(tabId, runId, handle, epoch);
+        return { status: 'success', data };
+      }
+
+      // [Phase 6 e2e investigation, 2026-09-13, SHIPS IN PRODUCTION — see
+      // lib/platform/tabs.ts's header] chrome.tabs.get, relayed for the
+      // same reason as the storage/actuation trios above.
+      case 'TABS_RELAY_GET': {
+        const { tabId } = message.payload as { tabId: number };
+        const tab = await chrome.tabs.get(tabId).catch(() => null);
+        return { status: 'success', data: tab };
+      }
+      case 'TABS_RELAY_SEND_MESSAGE': {
+        const { tabId, message: inner } = message.payload as { tabId: number; message: unknown };
+        const data = await chrome.tabs.sendMessage(tabId, inner).catch(() => null);
+        return { status: 'success', data };
+      }
+
       case 'AGENT_PLAN_APPROVAL': {
         const { runId, approve, editedPlan } = message.payload as { runId: number; approve: boolean; editedPlan?: Plan };
         return relayRunControl('PLAN_APPROVAL_RESPONSE', { runId, approve, editedPlan });
@@ -652,6 +736,41 @@ export default defineBackground(() => {
         return { status: 'success', data: runs };
       }
 
+      // [Phase 6 §3.6] PARTIAL_EFFECT's approve/deny-a-retry hold.
+      case 'AGENT_RECOVERY_APPROVAL': {
+        const { runId, requestId, approve } = message.payload as { runId: number; requestId: string; approve: boolean };
+        return relayRunControl('RECOVERY_APPROVAL_RESPONSE', { runId, requestId, approve });
+      }
+
+      // [Phase 6 §6, §7.1] the structured report the Runs view renders —
+      // built fresh from the journal on every request, never cached.
+      case 'AGENT_GET_RUN_REPORT': {
+        const { runId } = message.payload as { runId: number };
+        return { status: 'success', data: await buildReport(runId) };
+      }
+
+      // [Phase 6 §7.2, PR-RUN-6] delete one run — its `runs` row and every
+      // `runEvents` row for it, in one Dexie transaction.
+      case 'AGENT_DELETE_RUN': {
+        const { runId } = message.payload as { runId: number };
+        await db.transaction('rw', db.runs, db.runEvents, async () => {
+          await db.runEvents.where('runId').equals(runId).delete();
+          await db.runs.delete(runId);
+        });
+        return { status: 'success' };
+      }
+
+      // [Phase 6 §7.2, PR-RUN-6] clear every run and every runEvents row,
+      // in one Dexie transaction — the options page gates this behind a
+      // typed confirmation before ever sending it.
+      case 'AGENT_CLEAR_RUNS': {
+        await db.transaction('rw', db.runs, db.runEvents, async () => {
+          await db.runEvents.clear();
+          await db.runs.clear();
+        });
+        return { status: 'success' };
+      }
+
       // [Phase 3 §15, e2e build only] compiled out of every other build —
       // see wxt.config.ts's __PP_E2E__ comment and AgentBenchGateRequest's.
       // [Phase 5] ensureRun() (Phase 3's reuse-while-alive run lookup) is
@@ -677,6 +796,55 @@ export default defineBackground(() => {
         if (!validated.success) return { status: 'error', message: 'MALFORMED_ACTION' };
         const decision = await gate(validated.data);
         return { status: 'success', data: { decision } };
+      }
+
+      // [Phase 6 §15, e2e build only] see lib/types/message.types.ts's
+      // AGENT_BENCH_TAB_PERCEIVE comment — a REAL TabAgent's
+      // perceiveForPlanning(), which is the one choke point suspicion
+      // scanning and SITE_REFUSED detection both run through, driven
+      // against a real fixture page without a live planner.
+      case 'AGENT_BENCH_TAB_PERCEIVE': {
+        if (!__PP_E2E__) return { status: 'error', message: 'NOT_AVAILABLE' };
+        const { tabId } = message.payload as { tabId: number };
+        const run = await ensureBenchRun(tabId);
+        if (!run) return { status: 'error', message: 'TAB_GONE' };
+        const tabAgent = new TabAgent(run.id, tabId, new Budget(run.budgets, run.id), run.posture);
+        const result = await tabAgent.perceiveForPlanning();
+        return { status: 'success', data: { runId: run.id, result: result.ok ? { ok: true } : { ok: false, error: result.error } } };
+      }
+
+      // [Phase 6 §16, e2e build only] a REAL TabAgent's executeStep() — the
+      // one call that runs a mutating action through the FULL local
+      // recovery loop (attempt -> recoverIfNeeded -> recoverFrom: OBSCURED's
+      // dismissal, WRITE_REJECTED's adapt-then-accept, retry/ask, §3) —
+      // driven against a real fixture page with no live planner. Distinct
+      // from AGENT_BENCH_ACT above, which calls domBackend.act()+verify()
+      // directly and so never reaches lib/agent/recovery.ts at all; a
+      // recovery e2e spec needs THIS path, not that one. The step's action
+      // must already carry a resolved handle (found the same way
+      // tests/e2e/agent-helpers.ts's resolveHandle() finds one for
+      // AGENT_BENCH_ACT) — resolution itself is not what this message times
+      // or tests.
+      case 'AGENT_BENCH_TAB_STEP': {
+        if (!__PP_E2E__) return { status: 'error', message: 'NOT_AVAILABLE' };
+        const { tabId, step } = message.payload as { tabId: number; step: unknown };
+        const parsedStep = PlanStepSchema.safeParse(step);
+        if (!parsedStep.success) return { status: 'error', message: 'MALFORMED_ACTION' };
+        const run = await ensureBenchRun(tabId);
+        if (!run) return { status: 'error', message: 'TAB_GONE' };
+        const tabAgent = new TabAgent(run.id, tabId, new Budget(run.budgets, run.id), run.posture);
+        let outcome = await tabAgent.executeStep(parsedStep.data);
+        // An Always-tier step's FIRST outcome is the pre-dispatch approval
+        // hold itself (§9) — there is no human in this bench loop to answer
+        // it, and a recovery e2e spec (partial-effect.spec.ts's error-banner
+        // submit is Always tier) needs the dispatch that comes AFTER
+        // approval, not the hold. Auto-approving here is a bench-only
+        // stand-in for that one human click, exactly as
+        // AGENT_BENCH_APPROVE already is for AGENT_BENCH_ACT.
+        if (outcome.kind === 'approval') {
+          outcome = await tabAgent.performApproved(outcome.req, outcome.tier, parsedStep.data, 0);
+        }
+        return { status: 'success', data: { runId: run.id, outcome } };
       }
 
       // [Phase 5 §16, e2e build only] see AgentBenchActRequest's comment.

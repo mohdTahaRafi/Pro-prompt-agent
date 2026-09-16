@@ -199,7 +199,8 @@ describe('verify — navigate / history', () => {
     const pre = snap({ url: 'https://x.example/' });
     const post = snap({ url: 'https://x.example/' });
     const r = await verify({ verb: 'navigate', url: 'https://x.example/next' }, effect(), post, pre);
-    expect(r).toMatchObject({ verified: 'failed', check: 'location', failureCause: 'PARTIAL_EFFECT' });
+    // [Phase 6 §3's table] "URL unchanged past timeout" is NAVIGATION_FAILED.
+    expect(r).toMatchObject({ verified: 'failed', check: 'location', failureCause: 'NAVIGATION_FAILED' });
   });
 
   it('history_back confirms on a URL change and fails when nothing moved', async () => {

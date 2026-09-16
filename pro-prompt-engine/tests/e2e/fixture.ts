@@ -7,29 +7,28 @@
  * [Phase 5 acceptance audit, 2026-09-13] `headless` was never actually set
  * here, so `launchPersistentContext()` defaulted to headless despite the
  * paragraph above (confirmed via the launched process's own args). Fixed
- * below to match this file's stated intent — real, worth keeping, but it
- * turned out NOT to be the fix for the bigger problem this audit was
- * chasing: `chrome.offscreen.createDocument()`'s document never executes
- * ANY of its script in this environment, headless or not. Verified
- * thoroughly, not assumed: the exact same offscreen.html (module bundle,
- * and separately a trivial inline classic `<script>`) runs perfectly the
- * instant it's loaded as an ordinary navigated page (logs its full startup
- * sequence, writes to chrome.storage.local, registers a working
- * chrome.runtime.onMessage listener) — but created via chrome.offscreen
- * instead, under `headless: false`, with every `reasons` value tried
- * (WORKERS, DOM_PARSER), it never writes so much as its first line to
- * storage, and every message to `target: 'offscreen'` fails "Receiving end
- * does not exist" indefinitely. No crash report is ever generated. This is
- * a genuine limitation of `chrome.offscreen` in this Chromium build/sandbox
- * (Google Chrome for Testing 151.0.7922.34 here), not an application bug —
- * lib/model/offscreen-bridge.ts's ensureOffscreen() readiness-race fix is
- * still real and still correct (it turns the old silent-forever hang into
- * a clear, timely error), but it cannot succeed if the document underneath
- * it never runs at all. This blocks any e2e spec that needs a live,
- * message-reachable Supervisor (task 5.17's form-fill.spec.ts, and a
- * genuine Take-over/Interrupted-run round trip) until this environment's
- * Chromium build is swapped for one where chrome.offscreen actually works —
- * confirmed NOT specific to this repo's code.
+ * below to match this file's stated intent.
+ *
+ * [Phase 6 e2e investigation, 2026-09-13 — SUPERSEDES two earlier notes that
+ * stood here] The offscreen document's script runs fine — it always did,
+ * once lib/model/engines/webllm.ts's unguarded module-scope
+ * `chrome.storage.local` read (which threw before this document's own
+ * `chrome.runtime.onMessage.addListener` ever ran) was fixed. What is real,
+ * and IS Chrome's documented, permanent design, not a bug in this sandbox:
+ * "the chrome.runtime API is the only extensions API supported by offscreen
+ * documents" (developer.chrome.com/docs/extensions/reference/api/offscreen)
+ * — confirmed directly here too (`Object.keys(chrome)` inside a real
+ * offscreen document never grows past `['loadTimes','csi','runtime']`,
+ * polled for 15 straight seconds, while the byte-identical page loaded as
+ * an ordinary tab has the full API surface instantly). This is universal to
+ * every Chrome installation, not specific to this build — so the fix is a
+ * relay, not an environment change: lib/platform/storage.ts and
+ * lib/actuation/relay-backend.ts route every chrome.storage/chrome.tabs
+ * call the offscreen-resident Supervisor/TabAgent make through the service
+ * worker over chrome.runtime messaging (the one API that IS there), which
+ * is what makes form-fill.spec.ts and Phase 6's J-2/J-3 milestones
+ * (tasks 6.14/6.15) able to run a real Supervisor end to end in this
+ * environment at all. See those two files' headers for the mechanism.
  */
 import { test as base, chromium, type BrowserContext } from '@playwright/test';
 import path from 'node:path';

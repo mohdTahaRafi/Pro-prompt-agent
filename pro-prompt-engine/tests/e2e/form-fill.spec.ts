@@ -16,21 +16,46 @@
  * here; this test's value is proving the real backend loop (planner, gate,
  * actuation, verification) against a real local LLM and real Chrome.
  *
- * A local 8B model on CPU is slow (measured ~1 tok/s-class throughput in
- * this environment) — timeouts here are generous on purpose. This is
- * exactly the class of test this repo already flags as needing a real dev
- * machine (a faster local model, or a GPU) to run quickly; it is included
- * because Ollama with a capable model IS reachable in this environment.
+ * [Phase 6 e2e investigation, 2026-09-13] This test's own generous timeouts
+ * were originally written assuming a slow local model was the only obstacle
+ * (a real, separate concern this environment does have — Ollama on CPU here
+ * runs at ~1 tok/s-class throughput). That assumption turned out to be
+ * moot: this run never reaches a real inference call at all. See
+ * tests/e2e/fixture.ts's header for the full, verified finding —
+ * `Supervisor.run()` throws on its very first line in this sandbox's
+ * offscreen document (`chrome.storage` is not exposed there at all, not
+ * merely slow to attach), and `lib/model/offscreen-bridge.ts`'s readiness
+ * gate now correctly refuses admission with `OFFSCREEN_UNREACHABLE` within
+ * 15 seconds rather than hanging. This test is therefore EXPECTED to fail
+ * fast with that refusal in this sandbox — not a regression to chase here,
+ * and no longer the multi-minute silent hang it used to be. Left in place,
+ * unskipped, because it is real and will pass unmodified the moment this
+ * environment's offscreen documents actually expose `chrome.storage`.
  */
 import { test, expect } from './fixture';
 import { grant, tabIdFor } from './agent-helpers';
 
 const ORIGIN = 'http://localhost:5599';
+// [Phase 6 e2e investigation, 2026-09-13] The system Ollama service 403s
+// every POST /api/chat whose Origin is chrome-extension://* — its own
+// default CORS policy, confirmed directly with curl, not a bug here — and
+// there is no sudo access in this sandbox to add an OLLAMA_ORIGINS override
+// to it. A second, throwaway `ollama serve` (same model files, read
+// permission only, `OLLAMA_ORIGINS=*`) runs on this port instead, for e2e
+// only — see wxt.config.ts's host_permissions comment for the matching
+// permission carve-out.
+const E2E_OLLAMA_URL = 'http://localhost:11500';
 
 async function admitRun(popup: any, tabId: number, goal: string, mode: string) {
   return popup.evaluate(async ({ tabId, goal, mode }: any) => {
     return chrome.runtime.sendMessage({ type: 'AGENT_ADMIT_RUN', payload: { tabId, goal, mode, posture: 'local-only' } });
   }, { tabId, goal, mode });
+}
+
+async function setOllamaConfig(popup: any, baseUrl: string) {
+  return popup.evaluate(async (baseUrl: string) => {
+    return chrome.runtime.sendMessage({ type: 'SET_OLLAMA_CONFIG', payload: { baseUrl } });
+  }, baseUrl);
 }
 
 async function getRun(popup: any, runId: number) {
@@ -65,11 +90,12 @@ async function waitForState(popup: any, runId: number, states: string[], timeout
 }
 
 test('a real plan is produced, approved, and at least one field is filled and verified', async ({ context, extensionId }) => {
-  test.setTimeout(6 * 60_000);   // a real local 8B-class planner call is slow — see file header
+  test.setTimeout(6 * 60_000);   // generous for a cold 8B CPU model load + eval, on the day this sandbox's offscreen documents actually expose chrome.storage
 
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   expect((await grant(popup, ORIGIN)).status).toBe('success');
+  expect((await setOllamaConfig(popup, E2E_OLLAMA_URL)).status).toBe('success');
 
   const page = await context.newPage();
   await page.goto(`${ORIGIN}/application-form.html`);

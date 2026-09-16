@@ -930,29 +930,107 @@ interface RunListRow {
   id: number; goal: string; state: string; outcome?: string; origin: string; startedAt: number; endedAt?: number;
 }
 
+// [Phase 6 §6.2] mirrors lib/agent/reporter.ts's RunReport shape — kept as
+// a local `any`-free type here rather than importing across the
+// entrypoint/lib boundary for a display-only shape (the same convention
+// this file already uses for RunListRow above).
+interface ReportedStep {
+  n: number; intent: string; verdict: 'confirmed' | 'unconfirmed' | 'failed' | 'skipped' | 'not_attempted';
+  evidence?: string; attempts: number; recoveredBy?: string; tabId: number | null; sourceUrl: string;
+}
+interface Gap { kind: string; what: string; where: string; why: string; }
+interface AskedQuestion { question: string; reason: string; stepN: number | null; answer?: string; }
+interface RunReport {
+  goal: string; outcome: string; steps: ReportedStep[]; gaps: Gap[]; questions: AskedQuestion[];
+  disclosure: { remoteCalls: number; provider?: string; classA: number; classB: number };
+  counts: { attempted: number; confirmed: number; unconfirmed: number; failed: number; recovered: number; skipped: number };
+}
+
+function stepVerdictColor(v: ReportedStep['verdict']): string {
+  switch (v) {
+    case 'confirmed': return 'text-accent-green';
+    case 'failed': return 'text-accent-red';
+    case 'unconfirmed': return 'text-accent-yellow';
+    default: return 'text-text-muted';
+  }
+}
+
 function RunsView() {
   const [runs, setRuns] = useState<RunListRow[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
+  const [report, setReport] = useState<RunReport | null>(null);
   const [events, setEvents] = useState<any[]>([]);
+  const [showRawJournal, setShowRawJournal] = useState(false);
+  const [confirmClearText, setConfirmClearText] = useState('');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [error, setError] = useState('');
+
+  const reload = () => send<RunListRow[]>('AGENT_LIST_RUNS').then((list) => setRuns(list ?? [])).catch(() => {});
+  useEffect(() => { reload(); }, []);
 
   useEffect(() => {
-    send<RunListRow[]>('AGENT_LIST_RUNS').then((list) => setRuns(list ?? [])).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (selected === null) { setEvents([]); return; }
+    if (selected === null) { setReport(null); setEvents([]); return; }
+    send<RunReport>('AGENT_GET_RUN_REPORT', { runId: selected }).then(setReport).catch(() => setReport(null));
     send<any[]>('AGENT_GET_RUN_EVENTS', { runId: selected }).then((evs) => setEvents(evs ?? [])).catch(() => {});
   }, [selected]);
 
+  // [Phase 6 §7.2, PR-RUN-6] delete one run — its `runs` row and every
+  // `runEvents` row, in one Dexie transaction (entrypoints/background.ts's
+  // AGENT_DELETE_RUN handler).
+  async function deleteRun(runId: number, ev: React.MouseEvent) {
+    ev.stopPropagation();
+    try {
+      await send('AGENT_DELETE_RUN', { runId });
+      if (selected === runId) setSelected(null);
+      await reload();
+    } catch (e: any) { setError(e?.message ?? String(e)); }
+  }
+
+  // [Phase 6 §7.2, PR-RUN-6] clear all — behind a TYPED confirmation, not
+  // just a click-through dialog (deleting every run history entry is
+  // exactly the kind of action a misclick should not be able to trigger).
+  async function clearAll() {
+    if (confirmClearText.trim().toUpperCase() !== 'DELETE') return;
+    try {
+      await send('AGENT_CLEAR_RUNS');
+      setSelected(null); setShowClearConfirm(false); setConfirmClearText('');
+      await reload();
+    } catch (e: any) { setError(e?.message ?? String(e)); }
+  }
+
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-h1 font-bold">Runs</h2>
-        <p className="text-body text-text-secondary mt-1">
-          Read-only run history and journal. To start or control a run, open the side panel on a
-          granted page — click Pro Prompt's in-page button, or Chrome's own side panel icon.
-        </p>
+      <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-h1 font-bold">Runs</h2>
+          <p className="text-body text-text-secondary mt-1">
+            The story of what the agent actually did, from its own journal — not a success-rate number.
+            To start or control a run, open the side panel on a granted page.
+          </p>
+        </div>
+        {runs.length > 0 && (
+          <button onClick={() => setShowClearConfirm(true)} className="btn-secondary px-3 py-1.5 text-xs border border-accent-red/40 text-accent-red">
+            Clear all
+          </button>
+        )}
       </div>
+
+      {showClearConfirm && (
+        <div className="card p-4 mb-4 border border-accent-red/40">
+          <p className="text-small mb-2">
+            This permanently deletes every run and its full journal. Type <span className="font-mono font-bold">DELETE</span> to confirm.
+          </p>
+          <div className="flex gap-2">
+            <input value={confirmClearText} onChange={(e) => setConfirmClearText(e.target.value)} className="input-field text-small flex-1" placeholder="DELETE" />
+            <button onClick={clearAll} disabled={confirmClearText.trim().toUpperCase() !== 'DELETE'} className="btn-primary px-4 py-2 text-small disabled:opacity-50 bg-accent-red">
+              Delete everything
+            </button>
+            <button onClick={() => { setShowClearConfirm(false); setConfirmClearText(''); }} className="btn-secondary px-3 py-2 text-small border border-border-default">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {error && <div className="card p-3 mb-4 border border-accent-red/40 text-accent-red text-small">{error}</div>}
 
       {runs.length === 0 && (
         <div className="card p-5 text-small text-text-secondary">No runs yet.</div>
@@ -968,29 +1046,100 @@ function RunsView() {
             <div className="flex items-center gap-2 text-xs">
               <span className="font-mono px-2 py-0.5 rounded bg-surface-hover">{r.state}</span>
               {r.outcome && <span className="font-mono px-2 py-0.5 rounded bg-surface-hover">{r.outcome}</span>}
+              <button onClick={(e) => deleteRun(r.id, e)} className="btn-icon w-6 h-6 text-xs text-accent-red" title="Delete this run">✕</button>
             </div>
           </div>
 
-          {selected === r.id && (
-            <div className="mt-4 overflow-x-auto" onClick={(e) => e.stopPropagation()}>
-              <table className="w-full text-small">
-                <thead>
-                  <tr className="text-left text-text-muted border-b border-border-default">
-                    <th className="py-1 pr-3">Seq</th>
-                    <th className="py-1 pr-3">Kind</th>
-                    <th className="py-1 pr-3">Data</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {events.map((e) => (
-                    <tr key={e.id ?? e.seq} className="border-b border-border-default/50">
-                      <td className="py-1 pr-3 font-mono">{e.seq}</td>
-                      <td className="py-1 pr-3">{e.kind}</td>
-                      <td className="py-1 pr-3 text-text-muted font-mono text-xs">{JSON.stringify(e.data)}</td>
-                    </tr>
+          {selected === r.id && report && (
+            <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+              {/* ── The narrative report — reads only from the journal (§6.1) ── */}
+              <div className="mb-4 p-3 rounded-lg bg-surface-hover">
+                <p className="text-small font-medium mb-1">{report.outcome.replace(/_/g, ' ')}</p>
+                <p className="text-xs text-text-muted">
+                  {report.counts.confirmed} confirmed · {report.counts.unconfirmed} unconfirmed ·{' '}
+                  {report.counts.failed} failed · {report.counts.recovered} recovered
+                </p>
+              </div>
+
+              {report.steps.length > 0 && (
+                <ol className="space-y-1.5 mb-4">
+                  {report.steps.map((s) => (
+                    <li key={s.n} className="text-small">
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{s.n}. {s.intent}</span>
+                        <span className={`text-xs font-mono ${stepVerdictColor(s.verdict)}`}>{s.verdict}</span>
+                      </div>
+                      {(s.evidence || s.recoveredBy) && (
+                        <p className="text-xs text-text-muted pl-4">
+                          {s.evidence}{s.evidence && s.recoveredBy ? ' — ' : ''}
+                          {s.recoveredBy && `recovered on a later attempt (${s.recoveredBy})`}
+                        </p>
+                      )}
+                    </li>
                   ))}
-                </tbody>
-              </table>
+                </ol>
+              )}
+
+              {report.gaps.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-text-muted uppercase mb-1">Gaps</h4>
+                  <ul className="space-y-1">
+                    {report.gaps.map((g, i) => (
+                      <li key={i} className="text-small text-accent-yellow">
+                        {g.what} — {g.why}{g.where ? ` (${g.where})` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {report.questions.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-text-muted uppercase mb-1">Questions asked</h4>
+                  <ul className="space-y-1">
+                    {report.questions.map((q, i) => (
+                      <li key={i} className="text-small">
+                        <span className="font-mono text-xs text-text-muted mr-1">[{q.reason}]</span>
+                        {q.question}{q.answer ? ` → "${q.answer}"` : ' (unanswered)'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {report.disclosure.remoteCalls > 0 && (
+                <p className="text-xs text-text-muted mb-4">
+                  {report.disclosure.remoteCalls} remote call(s){report.disclosure.provider ? ` to ${report.disclosure.provider}` : ''} —{' '}
+                  {report.disclosure.classA} Class A, {report.disclosure.classB} Class B.
+                </p>
+              )}
+
+              <button onClick={() => setShowRawJournal((v) => !v)} className="text-xs text-primary underline mb-2">
+                {showRawJournal ? 'Hide' : 'Show'} raw journal ({events.length} rows)
+              </button>
+
+              {showRawJournal && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-small">
+                    <thead>
+                      <tr className="text-left text-text-muted border-b border-border-default">
+                        <th className="py-1 pr-3">Seq</th>
+                        <th className="py-1 pr-3">Kind</th>
+                        <th className="py-1 pr-3">Data</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {events.map((e) => (
+                        <tr key={e.id ?? e.seq} className="border-b border-border-default/50">
+                          <td className="py-1 pr-3 font-mono">{e.seq}</td>
+                          <td className="py-1 pr-3">{e.kind}</td>
+                          <td className="py-1 pr-3 text-text-muted font-mono text-xs">{JSON.stringify(e.data)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>

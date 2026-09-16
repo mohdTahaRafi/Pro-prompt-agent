@@ -1,0 +1,28 @@
+<!doctype html>
+<!--
+  Phase 6 §3.6, task 6.6 — PARTIAL_EFFECT: "a fixture whose submit shows an
+  error banner". Clicking Submit inserts a role="alert" element inside the
+  SAME form, with no navigation — lib/page/verifier.ts's negativeCheck()
+  scopes its before/after comparison by formId, so the alert must land
+  inside the <form>, not merely somewhere on the page, to be attributed to
+  this click.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Submit produces an error banner</title></head>
+<body>
+  <h1>Checkout</h1>
+  <form id="checkout-form" aria-label="Checkout form">
+    <label for="card-name">Name on card</label>
+    <input id="card-name" type="text" value="Mohd Taha" />
+    <button id="submit-btn" type="button">Submit</button>
+  </form>
+  <script>
+    document.getElementById('submit-btn').addEventListener('click', () => {
+      const alertEl = document.createElement('div');
+      alertEl.setAttribute('role', 'alert');
+      alertEl.textContent = 'Error: the payment could not be processed. Please try again.';
+      document.getElementById('checkout-form').appendChild(alertEl);
+    });
+  </script>
+</body>
+</html>

@@ -57,7 +57,28 @@ export type MessageType =
   // [Phase 5 acceptance audit, 2026-09-13, e2e build only] see
   // lib/schemas/message.schema.ts's AgentBenchSetStateRequest/
   // AgentBenchReconcileRequest comments.
-  | 'AGENT_BENCH_SET_STATE' | 'AGENT_BENCH_RECONCILE';
+  | 'AGENT_BENCH_SET_STATE' | 'AGENT_BENCH_RECONCILE'
+  // [Phase 6 §3.6, §7] the PARTIAL_EFFECT retry approve/deny hold, and the
+  // Runs view's report + deletion surface (§7.1, §7.2).
+  | 'AGENT_RECOVERY_APPROVAL' | 'AGENT_GET_RUN_REPORT' | 'AGENT_DELETE_RUN' | 'AGENT_CLEAR_RUNS'
+  // [Phase 6 §15, e2e build only] drives a REAL TabAgent's perceiveForPlanning()
+  // — the one choke point suspicion.ts's scan() and SITE_REFUSED detection
+  // both run through — against a real fixture page, without needing a live
+  // planner to reach it (the same "skip the part this test isn't about"
+  // precedent as AgentBenchGateRequest/AgentBenchActRequest).
+  | 'AGENT_BENCH_TAB_PERCEIVE'
+  // [Phase 6 §16, e2e build only] see lib/schemas/message.schema.ts's
+  // AgentBenchTabStepRequest comment — a real TabAgent.executeStep(),
+  // driving the full §3 recovery loop against a real fixture page.
+  | 'AGENT_BENCH_TAB_STEP'
+  // [Phase 6 e2e investigation, 2026-09-13, SHIPS IN PRODUCTION] chrome.storage
+  // and chrome.tabs are both permanently absent from the offscreen document
+  // (Chrome's own restriction — lib/platform/storage.ts's header); every
+  // offscreen-resident call to either relays through the service worker via
+  // these six. See lib/schemas/message.schema.ts's own comments on each.
+  | 'STORAGE_RELAY_GET' | 'STORAGE_RELAY_SET' | 'STORAGE_RELAY_REMOVE'
+  | 'AGENT_ACTUATION_PERCEIVE' | 'AGENT_ACTUATION_ACT' | 'AGENT_ACTUATION_DISMISS_OVERLAY'
+  | 'TABS_RELAY_GET' | 'TABS_RELAY_SEND_MESSAGE';
 
 export interface ExtensionResponse<T = unknown> {
   status: 'success' | 'error' | 'not_implemented' | 'unknown_type';

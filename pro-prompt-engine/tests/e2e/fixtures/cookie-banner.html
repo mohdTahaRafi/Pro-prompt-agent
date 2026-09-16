@@ -1,0 +1,34 @@
+<!doctype html>
+<!--
+  Phase 6 §3.2 — a REAL, successful OBSCURED recovery, task 6.2: "a cookie
+  banner covering a button is dismissed and the original click succeeds".
+  Escape deliberately does nothing here (real cookie banners on the actual
+  web overwhelmingly do not bind it) so the courtesy strategy is exercised
+  and correctly falls through to named-dismiss, per §3.2's three strategies
+  in order. "Accept all" matches lib/page/overlay-dismiss.ts's DISMISS_WORD_RE
+  and is a plain button with no sensitive kind, so it classifies Low on any
+  non-sensitive origin.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Cookie banner fixture</title></head>
+<body>
+  <h1>Checkout</h1>
+  <!-- Fixed, anchored to the bottom by the SAME edge as the banner below
+       (never `top`, whose overlap with a bottom-anchored banner would
+       depend on the test browser's actual viewport height) — guaranteed
+       covered by the banner's bottom 200px regardless of viewport. -->
+  <button id="continue-btn" style="position:fixed;bottom:60px;left:80px;width:160px;height:44px;z-index:1;">Continue</button>
+
+  <div id="cookie-banner"
+       style="position:fixed;left:0;right:0;bottom:0;height:200px;box-sizing:border-box;padding:16px;background:#222;color:white;z-index:9999;">
+    <p>We use cookies to improve your experience.</p>
+    <button id="accept-all">Accept all</button>
+    <button id="manage">Manage preferences</button>
+  </div>
+  <script>
+    document.getElementById('accept-all').addEventListener('click', () => {
+      document.getElementById('cookie-banner').remove();
+    });
+  </script>
+</body>
+</html>

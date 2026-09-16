@@ -79,6 +79,19 @@ function actionSummary(a: Action): string {
   }
 }
 
+/** Plain-language names for the FailureCause codes recovery narration
+ *  shows mid-run — never the bare enum string (§9's demo copy: "notices
+ *  the field count is anomalously low", not "LOW_FIELD_COUNT"). */
+function cause_label(cause: string | undefined): string {
+  switch (cause) {
+    case 'OBSCURED': return 'something covering the target';
+    case 'WRITE_REJECTED': return 'the page not accepting what was typed';
+    case 'NOT_SETTLED': return 'the page still settling';
+    case 'NAVIGATION_FAILED': return 'a navigation that did not take';
+    default: return 'a hiccup';
+  }
+}
+
 function verdictBadge(v: VerificationResult['verified'] | undefined) {
   if (v === 'confirmed') return <span className="text-accent-green text-xs">✓ confirmed</span>;
   if (v === 'failed') return <span className="text-accent-red text-xs">✕ failed</span>;
@@ -267,6 +280,57 @@ export default function Cockpit() {
     return null;
   }, [events]);
 
+  // ── [Phase 6] recovery narration, PARTIAL_EFFECT's own approval hold,
+  //    AUTH_REQUIRED's pause copy, and the suspicion halt card. ──
+
+  // The most recent recovery.* event with no later run.completed after it —
+  // shown as a small line under the step list while the run is still going.
+  const lastRecoveryNote = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (e.kind === 'recovery.recovered') {
+        const d = e.data as { method?: string };
+        return `Recovered — ${d.method ?? 'retried after adapting'}.`;
+      }
+      if (e.kind === 'recovery.attempted') {
+        const d = e.data as { action?: string; cause?: string };
+        if (d.action === 'retry' || d.action === 'adapt') return `Recovering from ${cause_label(d.cause)}…`;
+      }
+      if (e.kind === 'run.completed' || e.kind === 'action.observed') break;   // this step's own outcome supersedes it
+    }
+    return null;
+  }, [events]);
+
+  // Latest recovery.approval_requested with no later granted/denied for the
+  // SAME requestId — PARTIAL_EFFECT's own hold, distinct from a tier
+  // approval even though both use run.state === 'awaiting_approval'.
+  const pendingRecoveryApproval = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (e.kind === 'recovery.approval_requested') {
+        const { requestId, question } = e.data as { requestId: string; question: string };
+        const answered = events.some((x, j) => j > i
+          && (x.kind === 'recovery.approval_granted' || x.kind === 'recovery.approval_denied')
+          && (x.data as any)?.requestId === requestId);
+        if (!answered) return { requestId, question };
+      }
+    }
+    return null;
+  }, [events]);
+
+  // The most recent auth.required event with no later run.resumed after it
+  // — distinguishes AUTH_REQUIRED's pause from a plain user-pressed Pause.
+  const authRequiredMessage = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (e.kind === 'run.resumed' || e.kind === 'run.paused') return null;   // a later plain pause/resume supersedes it
+      if (e.kind === 'auth.required') return (e.data as { message: string }).message;
+    }
+    return null;
+  }, [events]);
+
+  const suspicionHalt = events.filter((e) => e.kind === 'suspicion.halted').at(-1);
+
   async function startRun() {
     if (!tabId || !goal.trim()) return;
     setBusy(true); setError('');
@@ -315,6 +379,14 @@ export default function Cockpit() {
     setBusy(false);
   }
 
+  async function respondRecoveryApproval(approve: boolean) {
+    if (!run?.id || !pendingRecoveryApproval) return;
+    setBusy(true);
+    try { await send('AGENT_RECOVERY_APPROVAL', { runId: run.id, requestId: pendingRecoveryApproval.requestId, approve }); }
+    catch (e: any) { setError(e?.message ?? String(e)); }
+    setBusy(false);
+  }
+
   async function stop() {
     if (!run?.id) return;
     await send('AGENT_STOP', { runId: run.id });
@@ -328,16 +400,35 @@ export default function Cockpit() {
     return (
       <div className="p-4">
         {run && TERMINAL_STATES.has(run.state) && (
-          <div className="card p-4 mb-4">
+          <div className={`card p-4 mb-4 ${run.state === 'halted' && suspicionHalt ? 'border border-accent-red/40' : ''}`}>
             <h2 className="text-h2 font-semibold mb-1">
-              {run.state === 'completed' ? 'Completed' : run.state === 'stopped' ? 'Stopped' : run.state === 'halted' ? 'Interrupted' : 'Failed'}
+              {run.state === 'completed' ? 'Completed' : run.state === 'stopped' ? 'Stopped' : run.state === 'halted' ? 'Halted' : 'Failed'}
               {run.outcome === 'completed_with_gaps' ? ' with gaps' : ''}
             </h2>
-            <p className="text-small text-text-secondary">
-              {run.state === 'halted'
-                ? 'This run was interrupted and has been halted. Start a new run to continue.'
-                : (completedEvent?.data as any)?.summary ?? '—'}
-            </p>
+            {run.state === 'halted' && suspicionHalt ? (
+              // [Phase 6 §5] the suspicion evidence, shown plainly — this
+              // page contains hidden text (or an instruction-shaped label,
+              // an origin change, or a credential request) addressed to an
+              // automated tool, and the run stopped before the planner
+              // ever saw it.
+              <div className="text-small text-text-secondary">
+                <p className="mb-2">
+                  I stopped before planning because this page shows signs of prompt injection —
+                  it contains hidden text addressed to an automated tool.
+                </p>
+                <ul className="space-y-1">
+                  {((suspicionHalt.data as any)?.hits ?? []).map((h: { signal: string; evidence: string }, i: number) => (
+                    <li key={i} className="text-xs font-mono bg-surface-hover rounded px-2 py-1">
+                      <span className="text-accent-red">{h.signal}</span>: "{h.evidence}"
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : run.state === 'halted' ? (
+              <p className="text-small text-text-secondary">This run was interrupted and has been halted. Start a new run to continue.</p>
+            ) : (
+              <p className="text-small text-text-secondary">{(completedEvent?.data as any)?.summary ?? '—'}</p>
+            )}
           </div>
         )}
 
@@ -414,10 +505,29 @@ export default function Cockpit() {
               );
             })}
           </ol>
+          {/* [Phase 6] recovery narration — "recovered on the second
+              attempt" lives IN the journal, not invented by the UI; this
+              line is just that journal's most recent recovery note. */}
+          {lastRecoveryNote && (
+            <p className="text-xs text-primary mt-2 pt-2 border-t border-border-default">🔧 {lastRecoveryNote}</p>
+          )}
         </div>
       )}
 
-      {run.state === 'awaiting_approval' && pendingApproval && (
+      {run.state === 'awaiting_approval' && pendingRecoveryApproval && (
+        // [Phase 6 §3.6] PARTIAL_EFFECT — a distinct hold from the tier
+        // approval below: this is "retry or stop", never "may this run".
+        <div className="card p-4 mb-3 border border-accent-yellow/40">
+          <h3 className="text-body font-semibold mb-1">Not sure this took effect</h3>
+          <p className="text-small mb-3">{pendingRecoveryApproval.question}</p>
+          <div className="flex gap-2">
+            <button onClick={() => respondRecoveryApproval(true)} disabled={busy} className="btn-primary px-4 py-2 disabled:opacity-50">🔁 Retry</button>
+            <button onClick={() => respondRecoveryApproval(false)} disabled={busy} className="btn-secondary px-4 py-2 border border-border-default disabled:opacity-50">⏹ Stop here</button>
+          </div>
+        </div>
+      )}
+
+      {run.state === 'awaiting_approval' && !pendingRecoveryApproval && pendingApproval && (
         <div className="card p-4 mb-3 border border-accent-yellow/40">
           <h3 className="text-body font-semibold mb-1">{pendingApproval.prompt.action}</h3>
           <p className="text-xs text-text-muted mb-2">on {pendingApproval.prompt.site}</p>
@@ -454,7 +564,9 @@ export default function Cockpit() {
       )}
 
       {run.state === 'paused' && (
-        <div className="card p-4 mb-3 text-small text-text-secondary">Paused. Nothing will run until you resume.</div>
+        <div className={`card p-4 mb-3 text-small ${authRequiredMessage ? 'border border-primary/40' : 'text-text-secondary'}`}>
+          {authRequiredMessage ?? 'Paused. Nothing will run until you resume.'}
+        </div>
       )}
       {run.state === 'taken_over' && (
         <div className="card p-4 mb-3 text-small text-text-secondary">You're driving. Press Resume when you're done.</div>

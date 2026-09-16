@@ -50,12 +50,28 @@ export interface ActEffect {
   focusFailed?: boolean;
 }
 
+/** What lib/page/overlay-dismiss.ts's one attempt found and did. */
+export interface DismissResult {
+  dismissed: boolean;
+  strategy?: string;
+  reason?: string;
+}
+
 export interface ActuationBackend {
   readonly kind: 'dom' | 'cdp';
   attach(tabId: number): Promise<Result<void, BackendError>>;
   detach(tabId: number): Promise<void>;
   perceive(tabId: number, runId: number, req: PerceiveArgs): Promise<Result<PerceptionSnapshot, BackendError>>;
   act(tabId: number, runId: number, action: Action, epoch: number): Promise<Result<ActEffect, FailureCause>>;
+  /** [Phase 6 §3.2] one OBSCURED-recovery attempt against the handle's
+   *  current node — never looped by the backend itself; the "one attempt"
+   *  constraint is enforced by the caller (lib/agent/tab-agent.ts) calling
+   *  this at most once per OBSCURED occurrence. FailureCause, not
+   *  BackendError — this is an actuation (it can click), not a pure
+   *  perceive, and can fail STOPPED the same way act() can (§3.7.7's
+   *  last-instant check, made by the content script immediately before it
+   *  would otherwise touch the DOM). */
+  dismissOverlay(tabId: number, runId: number, handle: string, epoch: number): Promise<Result<DismissResult, FailureCause>>;
   /** [Phase 10] */
   capture(tabId: number, clip?: Rect): Promise<Result<Blob, BackendError>>;
 }

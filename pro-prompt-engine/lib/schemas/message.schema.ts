@@ -8,7 +8,8 @@
  * See Docs/planning/phase_1_foundation_preconditions.md §7.1.
  */
 import { z } from 'zod';
-import { ActionRequestSchema } from '@lib/schemas/action.schema';
+import { ActionRequestSchema, ActionSchema } from '@lib/schemas/action.schema';
+import { PlanStepSchema } from '@lib/schemas/plan.schema';
 
 // ── Shared building blocks ──
 
@@ -317,6 +318,108 @@ export const AgentBenchSetStateRequest = req('AGENT_BENCH_SET_STATE', z.object({
 // entrypoints/background.ts's AGENT_BENCH_RECONCILE comment.
 export const AgentBenchReconcileRequest = reqNoPayload('AGENT_BENCH_RECONCILE');
 
+// [Phase 6 §3.6] PARTIAL_EFFECT's approve/deny-a-retry hold — answered from
+// the Cockpit the same way AgentApprovalResponseRequest answers a tier
+// approval, but routed to the Supervisor's SEPARATE recoveryApprovals map
+// (a different question: "retry this?", not "may this run at all?").
+export const AgentRecoveryApprovalRequest = req('AGENT_RECOVERY_APPROVAL', z.object({
+  runId: z.number().int(),
+  requestId: z.string().uuid(),
+  approve: z.boolean(),
+}));
+
+// [Phase 6 §7.1] the Runs view's structured report — lib/agent/reporter.ts's
+// buildReport(), never the raw journal alone.
+export const AgentGetRunReportRequest = req('AGENT_GET_RUN_REPORT', z.object({ runId: z.number().int() }));
+
+// [Phase 6 §7.2, PR-RUN-6] delete one run (its `runs` row and every
+// `runEvents` row for it, one Dexie transaction) or clear all runs, behind
+// the options page's own typed confirmation — this schema does not enforce
+// the confirmation text; that is a UI gate, not a wire-format one.
+export const AgentDeleteRunRequest = req('AGENT_DELETE_RUN', z.object({ runId: z.number().int() }));
+export const AgentClearRunsRequest = reqNoPayload('AGENT_CLEAR_RUNS');
+
+// [Phase 6 §15, e2e build only] see lib/types/message.types.ts's
+// AGENT_BENCH_TAB_PERCEIVE comment. Declared unconditionally like every
+// other bench message; only entrypoints/background.ts's handler is
+// compiled out in production builds.
+export const AgentBenchTabPerceiveRequest = req('AGENT_BENCH_TAB_PERCEIVE', z.object({ tabId: z.number().int() }));
+
+// [Phase 6 §16, e2e build only] see entrypoints/background.ts's
+// AGENT_BENCH_TAB_STEP comment — a real TabAgent.executeStep(), the one
+// call that runs the full §3 recovery loop, driven against a real fixture
+// page with no live planner call.
+export const AgentBenchTabStepRequest = req('AGENT_BENCH_TAB_STEP', z.object({
+  tabId: z.number().int(),
+  step: PlanStepSchema,
+}));
+
+// [Phase 6 e2e investigation, 2026-09-13] chrome.storage is permanently
+// absent from the offscreen document — Chrome's own documented restriction,
+// not a timing race (lib/platform/storage.ts's header). Every offscreen-
+// resident chrome.storage call (lib/agent/budget.ts, lib/policy/ownership.ts,
+// lib/model/engines/{ollama,remote,webllm}.ts, lib/agent/supervisor.ts's
+// STOP listener) relays through these three, which run in the service
+// worker where chrome.storage always is. Ships in production — this is not
+// an e2e-only path, it is how a real run's Supervisor reaches storage at
+// all.
+const StorageAreaSchema = z.enum(['local', 'session']);
+export const StorageRelayGetRequest = req('STORAGE_RELAY_GET', z.object({
+  area: StorageAreaSchema,
+  keys: z.union([z.string(), z.array(z.string()), z.null()]),
+}));
+export const StorageRelaySetRequest = req('STORAGE_RELAY_SET', z.object({
+  area: StorageAreaSchema,
+  items: z.record(z.string(), z.unknown()),
+}));
+export const StorageRelayRemoveRequest = req('STORAGE_RELAY_REMOVE', z.object({
+  area: StorageAreaSchema,
+  keys: z.union([z.string(), z.array(z.string())]),
+}));
+
+// [Phase 6 e2e investigation, 2026-09-13] chrome.tabs is likewise absent
+// from the offscreen document — lib/agent/tab-agent.ts's own
+// actuationBackend selection picks lib/actuation/relay-backend.ts there,
+// which sends exactly these three (attach/detach are local no-ops, capture
+// is Phase 10 — see that file's header) to reach the real domBackend
+// (chrome.tabs IS attached in the service worker). Also ships in
+// production, for the same reason as the STORAGE_RELAY_* trio above.
+export const AgentActuationPerceiveRequest = req('AGENT_ACTUATION_PERCEIVE', z.object({
+  tabId: z.number().int(),
+  runId: z.number().int(),
+  req: z.object({ region: z.string().optional(), tokenBudget: z.number().int().optional() }),
+}));
+export const AgentActuationActRequest = req('AGENT_ACTUATION_ACT', z.object({
+  tabId: z.number().int(),
+  runId: z.number().int(),
+  action: ActionSchema,
+  epoch: z.number().int().positive(),
+}));
+export const AgentActuationDismissOverlayRequest = req('AGENT_ACTUATION_DISMISS_OVERLAY', z.object({
+  tabId: z.number().int(),
+  runId: z.number().int(),
+  handle: z.string(),
+  epoch: z.number().int().positive(),
+}));
+
+// [Phase 6 e2e investigation, 2026-09-13, SHIPS IN PRODUCTION] chrome.tabs.get
+// — lib/agent/supervisor.ts's survey() reads the tab's title for the
+// roster (lib/platform/tabs.ts's header). Same "absent in the offscreen
+// document" reason as everything else on this page.
+export const TabsRelayGetRequest = req('TABS_RELAY_GET', z.object({ tabId: z.number().int() }));
+
+// [Phase 6 e2e investigation, 2026-09-13, SHIPS IN PRODUCTION] lib/agent/
+// tab-agent.ts's own raw chrome.tabs.sendMessage calls (perceive,
+// wait_for_settle — not domBackend's own ACTUATE/PERCEIVE_STRUCTURE/
+// DISMISS_OVERLAY messages, which relay-backend.ts already covers), relayed
+// the same way. `message` is intentionally unstructured — this forwards
+// whatever the content script's own onMessage listeners already validate
+// (entrypoints/agent.content.ts), not a second schema for the same shapes.
+export const TabsRelaySendMessageRequest = req('TABS_RELAY_SEND_MESSAGE', z.object({
+  tabId: z.number().int(),
+  message: z.unknown(),
+}));
+
 export const ExtensionRequest = z.discriminatedUnion('type', [
   PingRequest, ScoreRequest, RefactorRequest, GenerateRequest,
   GetProfileRequest, SetProfileRequest, GetAllProfilesRequest, SetActiveProfileRequest, DeleteProfileRequest,
@@ -332,6 +435,11 @@ export const ExtensionRequest = z.discriminatedUnion('type', [
   AgentAdmitRunRequest, AgentPlanApprovalRequest, AgentAskUserAnswerRequest,
   AgentPauseRequest, AgentResumeRequest, AgentTakeOverRequest, AgentGateCheckRequest,
   AgentBenchSetStateRequest, AgentBenchReconcileRequest,
+  AgentRecoveryApprovalRequest, AgentGetRunReportRequest, AgentDeleteRunRequest, AgentClearRunsRequest,
+  AgentBenchTabPerceiveRequest, AgentBenchTabStepRequest,
+  StorageRelayGetRequest, StorageRelaySetRequest, StorageRelayRemoveRequest,
+  AgentActuationPerceiveRequest, AgentActuationActRequest, AgentActuationDismissOverlayRequest,
+  TabsRelayGetRequest, TabsRelaySendMessageRequest,
 ]);
 
 export type ExtensionRequestType = z.infer<typeof ExtensionRequest>;

@@ -1,0 +1,15 @@
+<!doctype html>
+<!--
+  Phase 6 §3.5, task 6.5 — SITE_REFUSED's CAPTCHA signal.
+  lib/agent/recovery.ts's CAPTCHA_RE matches the page title here, exactly
+  the same read a real challenge page's <title> carries (Cloudflare,
+  hCaptcha, and reCAPTCHA interstitials all title the tab this way).
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Please verify you're human</title></head>
+<body>
+  <h1>Security check</h1>
+  <p>Please complete the captcha below to continue.</p>
+  <div id="captcha-widget">[captcha challenge placeholder]</div>
+</body>
+</html>

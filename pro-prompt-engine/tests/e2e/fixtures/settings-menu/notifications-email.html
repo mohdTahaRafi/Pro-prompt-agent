@@ -1,0 +1,30 @@
+<!doctype html>
+<!--
+  Phase 6, task 6.15 (J-3) — level 2 of the settings menu, and the page the
+  goal actually targets: a real, native, checked checkbox for "Marketing
+  emails" that the agent must uncheck. "Security alerts" is deliberately
+  locked (disabled) — an in-scope distractor the agent must leave alone,
+  the same way real settings pages mix togglable and locked preferences.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Settings — Email notifications</title></head>
+<body>
+  <header>ExampleApp</header>
+  <main>
+    <h1>Email notification settings</h1>
+    <p><a href="notifications.html">&larr; Back to Notifications</a></p>
+    <ul id="saved-banner" hidden>Preferences saved.</ul>
+    <ul id="error-banner" hidden>Something went wrong saving your preferences.</ul>
+    <form id="email-prefs">
+      <p><label><input type="checkbox" id="marketing-emails" name="marketing-emails" checked> Marketing emails</label></p>
+      <p><label><input type="checkbox" id="weekly-digest" name="weekly-digest" checked> Weekly digest</label></p>
+      <p><label><input type="checkbox" id="security-alerts" name="security-alerts" checked disabled> Security alerts (required)</label></p>
+    </form>
+  </main>
+  <script>
+    document.getElementById('email-prefs').addEventListener('change', function () {
+      document.getElementById('saved-banner').hidden = false;
+    });
+  </script>
+</body>
+</html>

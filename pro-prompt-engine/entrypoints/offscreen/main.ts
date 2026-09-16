@@ -224,6 +224,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
         case 'GET_STATE':
         case 'HEARTBEAT_PING':
+          // [Phase 6 e2e investigation, 2026-09-13, CORRECTS the removed
+          // `storageReady` field this case briefly carried] chrome.storage
+          // does not "bind late" here — it is PERMANENTLY absent from an
+          // offscreen document's `chrome` object (Chrome's own documented
+          // design; lib/platform/storage.ts's header has the evidence).
+          // There is nothing to wait for any more: every chrome.storage call
+          // reachable from this document (lib/agent/supervisor.ts and
+          // everything it calls) now goes through storageArea()/
+          // storageChanged, which relay to the service worker instead of
+          // needing chrome.storage attached here at all. A plain response
+          // to this message means this listener is registered and this
+          // document's module graph finished loading — the only thing
+          // lib/model/offscreen-bridge.ts's pingUntilReady() needs to know.
           return {
             status: 'alive',
             data: { state: modelState, model: currentModel },
@@ -305,6 +318,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const { runId } = message.payload as { runId: number };
           const found = supervisors.has(runId);
           await supervisors.get(runId)?.takeOver();
+          return { data: { found } };
+        }
+
+        // [Phase 6 §3.6] PARTIAL_EFFECT's approve/deny-a-retry hold.
+        case 'RECOVERY_APPROVAL_RESPONSE': {
+          const { runId, requestId, approve } = message.payload as { runId: number; requestId: string; approve: boolean };
+          const found = supervisors.has(runId);
+          supervisors.get(runId)?.respondRecoveryApproval(requestId, approve);
           return { data: { found } };
         }
 

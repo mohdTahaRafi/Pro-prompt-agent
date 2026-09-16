@@ -1,0 +1,78 @@
+<!doctype html>
+<!--
+  Phase 6, task 6.14 (J-2) — a monitor spec page whose table shows 6 rows on
+  load and 22 after "Show full specifications" is clicked (real DOM
+  insertion, not a CSS reveal of pre-existing nodes — lib/page/perception.ts's
+  repeat-region detector counts live DOM siblings, so the region's `total`
+  genuinely changes from 6 to 22 only once the browser has actually inserted
+  the extra rows). Structurally identical to tests/e2e/fixtures/product-grid.html's
+  proven <article><img><h3><span> shape (div > span.spec-label + span.spec-value),
+  which regions.spec.ts already validates the repeat detector matches on tag
+  shape, not class name.
+
+  "Refresh rate" and "Panel type" are deliberately never present anywhere on
+  this page, before or after expansion — the two named gaps J-2's milestone
+  describes ("2 unknown ... were not present on the page ... after expanding
+  all sections") are genuinely absent content, not a truncation artifact.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Monitor C — Full Specifications</title></head>
+<body>
+  <header>ExampleTech</header>
+  <main>
+    <h1>Monitor C — 27" QHD</h1>
+
+    <section aria-label="Specifications">
+      <p id="spec-count">Showing 6 of 22 specifications.</p>
+      <div class="spec-table" id="spec-table">
+        <div class="spec-row"><span class="spec-label">Screen size</span><span class="spec-value">27 inches</span></div>
+        <div class="spec-row"><span class="spec-label">Resolution</span><span class="spec-value">2560 x 1440</span></div>
+        <div class="spec-row"><span class="spec-label">Aspect ratio</span><span class="spec-value">16:9</span></div>
+        <div class="spec-row"><span class="spec-label">Brightness</span><span class="spec-value">350 cd/m2</span></div>
+        <div class="spec-row"><span class="spec-label">Color gamut</span><span class="spec-value">99% sRGB</span></div>
+        <div class="spec-row"><span class="spec-label">Weight</span><span class="spec-value">5.4 kg</span></div>
+      </div>
+      <button id="show-more" type="button" onclick="expandSpecs()">Show full specifications</button>
+    </section>
+  </main>
+
+  <script>
+    function expandSpecs() {
+      var extra = [
+        ['Contrast ratio', '1000:1'],
+        ['Response time', '4 ms'],
+        ['HDMI ports', '2'],
+        ['DisplayPort', '1'],
+        ['USB-C', '1 (65W PD)'],
+        ['VESA mount', '100 x 100 mm'],
+        ['Stand adjustability', 'Height, tilt, swivel'],
+        ['Tilt range', '-5 to 20 degrees'],
+        ['Power consumption', '32 W typical'],
+        ['Certifications', 'Energy Star, TUV'],
+        ['Warranty', '3 years'],
+        ['Price', '$329.99'],
+        ['Speakers', 'None'],
+        ['Curvature', 'Flat'],
+        ['Anti-glare coating', 'Yes'],
+        ['Country of origin', 'Vietnam'],
+      ];
+      var table = document.getElementById('spec-table');
+      for (var i = 0; i < extra.length; i++) {
+        var row = document.createElement('div');
+        row.className = 'spec-row';
+        var label = document.createElement('span');
+        label.className = 'spec-label';
+        label.textContent = extra[i][0];
+        var value = document.createElement('span');
+        value.className = 'spec-value';
+        value.textContent = extra[i][1];
+        row.appendChild(label);
+        row.appendChild(value);
+        table.appendChild(row);
+      }
+      document.getElementById('spec-count').textContent = 'Showing 22 of 22 specifications.';
+      document.getElementById('show-more').remove();
+    }
+  </script>
+</body>
+</html>

@@ -5,6 +5,7 @@
  * Docs/planning/phase_5_agent_loop.md §4, §11 task 5.2.
  */
 import { Ok, Err, type Result } from '@lib/utils/result';
+import { tabRemoved } from '@lib/platform/tabs';
 
 export const MAX_ROSTER_SIZE = 1;
 
@@ -25,14 +26,17 @@ export class TabRoster {
   private removedListener: ((tabId: number) => void) | null = null;
 
   /** Registers the chrome.tabs.onRemoved listener for every tab this roster
-   *  ever admits — called once by the Supervisor at survey time. */
+   *  ever admits — called once by the Supervisor at survey time. Through
+   *  lib/platform/tabs.ts's tabRemoved, not chrome.tabs.onRemoved directly:
+   *  this runs in the offscreen document, which has no chrome.tabs of its
+   *  own (that module's header). */
   watch(onClosed: (tabId: number) => void): void {
     this.removedListener = onClosed;
-    chrome.tabs.onRemoved.addListener(this.handleRemoved);
+    tabRemoved.addListener(this.handleRemoved);
   }
 
   unwatch(): void {
-    chrome.tabs.onRemoved.removeListener(this.handleRemoved);
+    tabRemoved.removeListener(this.handleRemoved);
   }
 
   private handleRemoved = (tabId: number): void => {
