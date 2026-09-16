@@ -75,6 +75,17 @@ export default defineConfig({
     host_permissions: [
       'http://localhost:11434/*',   // Ollama, local, required for a Local-only planner
       ...(isE2E ? ['http://localhost:5599/*'] : []),   // e2e fixture server only — see comment above
+      // [Phase 6 e2e investigation, 2026-09-13] Ollama's own default CORS
+      // policy 403s any POST /api/chat whose Origin isn't on its allowlist —
+      // chrome-extension://<id> never is, confirmed directly (curl with that
+      // Origin header: 403; no Origin or http://localhost: 200). Real,
+      // correct Ollama behaviour, not a bug here, but it means the system
+      // Ollama service (no OLLAMA_ORIGINS override, no sudo to add one) can
+      // never serve a real planner call to this extension. form-fill.spec.ts
+      // points SET_OLLAMA_CONFIG at a second, throwaway `ollama serve`
+      // (same model files, `OLLAMA_ORIGINS=*`) on this port instead, for
+      // this e2e build only.
+      ...(isE2E ? ['http://localhost:11500/*'] : []),
       ...corpusOrigins,   // PP_CORPUS build only — see comment above
     ],
     // Groq and other remote providers move to optional_host_permissions,

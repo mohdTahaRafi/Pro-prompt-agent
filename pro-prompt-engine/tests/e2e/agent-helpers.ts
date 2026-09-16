@@ -64,6 +64,27 @@ export async function benchApprove(popup: Page, requestId: string, approve: bool
   }, { requestId, approve });
 }
 
+/** [Phase 6 §15, e2e build only] AGENT_BENCH_TAB_PERCEIVE — a real
+ *  TabAgent.perceiveForPlanning(), the one choke point suspicion.ts's
+ *  scan() and detectSiteRefusal() both run through, against a real fixture
+ *  page with no live planner. */
+export async function benchPerceive(popup: Page, tabId: number) {
+  return popup.evaluate(async (tabId) => {
+    return chrome.runtime.sendMessage({ type: 'AGENT_BENCH_TAB_PERCEIVE', payload: { tabId } });
+  }, tabId);
+}
+
+/** [Phase 6 §16, e2e build only] AGENT_BENCH_TAB_STEP — a real
+ *  TabAgent.executeStep(), which runs the full lib/agent/recovery.ts loop
+ *  (OBSCURED dismissal, WRITE_REJECTED adapt-then-accept, retry/ask) against
+ *  a real fixture page with no live planner. `step` must already carry a
+ *  resolved handle in its action (see resolveHandle() above). */
+export async function benchStep(popup: Page, tabId: number, step: unknown) {
+  return popup.evaluate(async ({ tabId, step }) => {
+    return chrome.runtime.sendMessage({ type: 'AGENT_BENCH_TAB_STEP', payload: { tabId, step } });
+  }, { tabId, step });
+}
+
 /** Fires an AGENT_BENCH_ACT without awaiting its response — used when the
  *  response is expected to take a long time (a slow-settling page) and the
  *  test needs to do something else (press Stop) while it is still in flight. */

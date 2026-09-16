@@ -33,7 +33,8 @@ import { computeRole } from '@lib/page/roles';
 import { computeAccessibleName } from '@lib/page/accname';
 import { classifySensitive } from '@lib/page/sensitive';
 import { actuate } from '@lib/page/actuator';
-import { ActuateMessageSchema } from '@lib/schemas/action.schema';
+import { ActuateMessageSchema, DismissOverlayMessageSchema } from '@lib/schemas/action.schema';
+import { attemptDismiss } from '@lib/page/overlay-dismiss';
 // [Phase 5 §9.2] the in-page overlay — GoalBox (no run for this tab) or
 // RunBadge (one is active). Mounted into the shared shadow host
 // (lib/page/overlay/mount.ts) so it shares settle.ts's isOurs() exclusion.
@@ -102,6 +103,39 @@ export default defineContentScript({
       actuate(parsed.data.action, parsed.data.epoch, registry, parsed.data.runId).then((result) => {
         sendResponse(result.ok ? { ok: true, value: result.value } : { ok: false, error: result.error });
       });
+      return true;
+    });
+
+    // [Phase 6 §3.2] DISMISS_OVERLAY — the one OBSCURED-recovery attempt,
+    // dispatched by lib/actuation/dom-backend.ts's dismissOverlay(). Resolves
+    // the SAME handle registry.resolve() already knows how to re-resolve
+    // (the descriptor ladder from lib/page/registry.ts, unchanged) rather
+    // than trusting a raw selector the caller might have guessed.
+    chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
+      const parsed = DismissOverlayMessageSchema.safeParse(raw);
+      if (!parsed.success) return false;   // not ours; let another listener answer
+
+      (async () => {
+        // STOP, checked one last time immediately before touching
+        // anything — the same last-instant check lib/page/actuator.ts's
+        // own actuate() makes (architecture.md §3.7.7), duplicated here
+        // rather than imported for the same reason that file's isStopped()
+        // is its own local copy: this listener must not import actuator.ts
+        // just for one check.
+        try {
+          const stopKey = `stop:${parsed.data.runId}`;
+          const { [stopKey]: stopped } = await chrome.storage.session.get(stopKey);
+          if (stopped) { sendResponse({ ok: false, error: 'STOPPED' }); return; }
+        } catch { /* storage.session unreachable — treated as not-stopped, defence in depth only */ }
+
+        const resolution = registry.resolve(parsed.data.handle, parsed.data.epoch);
+        if (resolution.kind === 'missing' || resolution.kind === 'ambiguous') {
+          sendResponse({ ok: false, error: 'TARGET_MISSING' });
+          return;
+        }
+        const outcome = attemptDismiss(resolution.node, location.origin);
+        sendResponse({ ok: true, value: outcome });
+      })();
       return true;
     });
 

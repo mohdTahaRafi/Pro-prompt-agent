@@ -14,6 +14,7 @@
  */
 import { z } from 'zod';
 import { Ok, Err, type Result } from '@lib/utils/result';
+import { storageArea } from '@lib/platform/storage';
 import type { RouteRequest, RouteResponse, RouteError } from '@lib/model/router-types';
 import type { Engine } from '@lib/model/engine';
 import { classifyOllamaModel, PLANNER_MIN_PARAMS_B, type OllamaModelClassification } from '@lib/model/tiers';
@@ -32,21 +33,16 @@ export const DEFAULT_PLANNER_MODEL = 'qwen2.5:14b';
 interface OllamaConfig { baseUrl: string; model: string }
 
 async function getOllamaConfig(): Promise<OllamaConfig> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(
-      ['ollamaBaseUrl', 'ollamaPlannerModel'],
-      (r: { ollamaBaseUrl?: string; ollamaPlannerModel?: string }) => {
-        resolve({ baseUrl: r.ollamaBaseUrl || DEFAULT_URL, model: r.ollamaPlannerModel || DEFAULT_PLANNER_MODEL });
-      },
-    );
-  });
+  const r = await storageArea('local').get(['ollamaBaseUrl', 'ollamaPlannerModel']) as
+    { ollamaBaseUrl?: string; ollamaPlannerModel?: string };
+  return { baseUrl: r.ollamaBaseUrl || DEFAULT_URL, model: r.ollamaPlannerModel || DEFAULT_PLANNER_MODEL };
 }
 
 export async function setOllamaConfig(patch: Partial<OllamaConfig>): Promise<void> {
   const update: Record<string, string> = {};
   if (patch.baseUrl !== undefined) update.ollamaBaseUrl = patch.baseUrl;
   if (patch.model !== undefined) update.ollamaPlannerModel = patch.model;
-  await chrome.storage.local.set(update);
+  await storageArea('local').set(update);
 }
 
 async function listInstalledModels(baseUrl: string): Promise<string[] | null> {
@@ -105,6 +101,28 @@ export async function probeOllamaPlanner(): Promise<OllamaPlannerProbe> {
   return { reachable: true, baseUrl, installed: classified, capable, chosenModel: chosen.name };
 }
 
+// [Phase 6 e2e investigation, 2026-09-13] REAL BUG, found against a real
+// Ollama serving a real 8B model for the first time (every prior phase's
+// planner testing used a mocked engine — tests/unit never sends a request
+// this large to a real llama.cpp). `format` asks Ollama to compile the
+// JSON Schema into a GBNF grammar and constrain decoding to it. §8.1's
+// PlanSchema nests a 19-verb discriminated union (ActionSchema) inside an
+// array of steps — llama.cpp's JSON-schema→GBNF converter expands each
+// array slot's `anyOf` combinatorially and hits its own hardcoded
+// repetition ceiling: `parse: error parsing grammar: number of repetitions
+// exceeds sane defaults`, which — worse than a clean error — crashes the
+// whole llama.cpp runner with SIGSEGV, taking the model down for every
+// other in-flight or future request until Ollama respawns it. This is not
+// a sandbox artifact — any real user's local Ollama planner call hits the
+// identical llama.cpp limitation on this identical schema. The planner
+// tier is the one proven to trip it (§8.1's own schema); judge/vision/
+// inline schemas are small booleans/short objects, unaffected, and keep
+// the accuracy `format` buys. `lib/model/router.ts`'s `inferStructured()`
+// validate-and-repair loop (§6.2) already exists for exactly the case of
+// an engine that cannot (or, here, must not) constrain decoding — the
+// prompt already fully describes the schema (lib/agent/prompts.ts's
+// PLANNER_SYSTEM); a good planner model does not need the grammar to
+// produce valid JSON, and the repair pass catches it when it doesn't.
 function buildBody(req: RouteRequest, model: string) {
   return {
     model,
@@ -113,7 +131,7 @@ function buildBody(req: RouteRequest, model: string) {
       { role: 'user', content: typeof req.user === 'string' ? req.user : req.user.filter((p) => p.type === 'text').map((p) => p.text).join('\n') },
     ],
     stream: false,
-    ...(req.schema ? { format: z.toJSONSchema(req.schema) } : {}),
+    ...(req.schema && req.tier !== 'planner' ? { format: z.toJSONSchema(req.schema) } : {}),
     options: {
       // Planning is a selection task over a fixed set of handles, not a
       // creative one; higher temperature buys variance in exactly the

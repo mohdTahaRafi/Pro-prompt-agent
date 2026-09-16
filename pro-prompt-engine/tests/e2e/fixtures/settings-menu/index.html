@@ -1,0 +1,26 @@
+<!doctype html>
+<!--
+  Phase 6, task 6.15 (J-3) — level 0 of a three-level settings menu. Each
+  level is a REAL separate page (a real navigation, not an in-page SPA
+  swap) specifically so lib/agent/replan.ts's trigger 5 (unexpected_change:
+  "URL change ... the plan did not predict") fires honestly on every step —
+  the planner's own OBSERVATION never contains a level it has not yet
+  navigated to, so it cannot pre-plan past the next click (§8.1 rule 1:
+  "A handle that does not appear in OBSERVATION does not exist").
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Settings</title></head>
+<body>
+  <header>ExampleApp</header>
+  <main>
+    <h1>Settings</h1>
+    <nav aria-label="Settings sections">
+      <ul>
+        <li><a href="account.html">Account</a></li>
+        <li><a href="notifications.html">Notifications</a></li>
+        <li><a href="display.html">Display</a></li>
+      </ul>
+    </nav>
+  </main>
+</body>
+</html>

@@ -17,6 +17,7 @@
  */
 import { Ok, Err, type Result } from '@lib/utils/result';
 import { ensureOffscreen } from '@lib/model/offscreen-bridge';
+import { storageArea } from '@lib/platform/storage';
 import type { RouteRequest, RouteResponse, RouteError } from '@lib/model/router-types';
 import type { Engine } from '@lib/model/engine';
 import type { ModelState, WebGPUModel } from '@lib/types/llm.types';
@@ -30,12 +31,31 @@ export const DEFAULT_JUDGE_MODEL: WebGPUModel = 'Qwen2.5-1.5B-Instruct-q4f32_1-M
 let currentState: ModelState = 'cold';
 let currentModel: WebGPUModel | null = null;
 
-chrome.storage.local.get(['webGpuActiveModel'], (res: { webGpuActiveModel?: WebGPUModel }) => {
+// [Phase 6 e2e investigation, 2026-09-13, ROOT CAUSE CORRECTED — see
+// lib/platform/storage.ts's header] The original diagnosis here ("chrome.
+// storage binds one tick late in a fresh offscreen document") was wrong:
+// confirmed against real Chrome, polled for 15 straight seconds with no
+// change, that `chrome.storage` is PERMANENTLY absent from an offscreen
+// document's `chrome` object — Chrome's own documented design ("the
+// chrome.runtime API is the only extensions API supported by offscreen
+// documents"), not a timing race a retry could ever outlast. Reading it
+// unguarded at module scope threw `Cannot read properties of undefined
+// (reading 'local')` — an UNCAUGHT exception during module evaluation that
+// aborted the rest of this script's module graph, including
+// entrypoints/offscreen/main.ts's own `chrome.runtime.onMessage.addListener`
+// two imports later, which is why a bounded retry here only ever delayed
+// the same permanent failure rather than fixing it. storageArea() is the
+// real fix: outside the offscreen document it is the real chrome.storage.local
+// directly (unchanged behaviour, no delay); inside it, it relays this one
+// get() through the service worker over chrome.runtime — the API Chrome
+// does attach there — which resolves as soon as this document's own message
+// listener is registered, no retry loop needed.
+storageArea('local').get(['webGpuActiveModel']).then((res: { webGpuActiveModel?: WebGPUModel }) => {
   if (res.webGpuActiveModel) {
     currentModel = res.webGpuActiveModel;
     currentState = 'cold';   // verified on demand, mirrors the Phase 1 adapter
   }
-});
+}).catch(() => {});   // best-effort — a first-ever install has no persisted model anyway
 
 export function getWebllmState(): { state: ModelState; model: WebGPUModel | null } {
   return { state: currentState, model: currentModel };

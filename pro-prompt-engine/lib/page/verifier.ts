@@ -41,6 +41,25 @@ function valuesMatch(got: string, want: string, inputType?: string): boolean {
   return false;
 }
 
+/**
+ * Recovery-stage loose comparison (Docs/planning/phase_6_recovery_journal_reporting.md
+ * §3.3). Normalises whitespace, strips non-alphanumerics (so a phone or
+ * card number survives re-formatting) and case-folds.
+ *
+ * Deliberately NOT called from verify() above — first-pass verification
+ * stays exact. A loose comparison at first verification would let a
+ * genuinely wrong value read as 'confirmed', which is exactly the
+ * false-confirmation gate (§3.8, tests/e2e/false-confirm.spec.ts) this file
+ * exists to hold. Exported for lib/agent/recovery.ts's WRITE_REJECTED
+ * adaptation ONLY — no other caller is correct.
+ */
+export function looselyEqual(got: string, want: string): boolean {
+  const fold = (s: string) => normalise(s).toLowerCase();
+  if (fold(got) === fold(want)) return true;
+  const strip = (s: string) => fold(s).replace(/[^a-z0-9]/g, '');
+  return strip(got) === strip(want);
+}
+
 /** confirmed only when settled; otherwise the weaker of the two. Never
  *  upgrades 'failed'. */
 function settleGate(base: Verified, settled: boolean): Verified {
@@ -188,8 +207,11 @@ export async function verify(
 
     case 'navigate': {
       if (post.url === pre.url) {
+        // [Phase 6 §3's table] "URL unchanged past timeout" is
+        // NAVIGATION_FAILED, not PARTIAL_EFFECT — the navigation simply
+        // did not happen, as opposed to a submit whose EFFECT is unknown.
         return {
-          verified: 'failed', check: 'location', failureCause: 'PARTIAL_EFFECT',
+          verified: 'failed', check: 'location', failureCause: 'NAVIGATION_FAILED',
           evidence: { before: pre.url, after: post.url },
         };
       }
@@ -206,7 +228,7 @@ export async function verify(
     case 'history_forward': {
       if (post.url === pre.url) {
         return {
-          verified: 'failed', check: 'location', failureCause: 'PARTIAL_EFFECT',
+          verified: 'failed', check: 'location', failureCause: 'NAVIGATION_FAILED',
           evidence: { before: pre.url, after: post.url },
         };
       }

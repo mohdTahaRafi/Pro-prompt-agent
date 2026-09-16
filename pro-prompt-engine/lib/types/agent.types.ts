@@ -67,7 +67,18 @@ export function formatRefusal(code: RefusalCode, ctx: { origin?: string } = {}):
 }
 
 // ── Actuator / backend failure causes — §6.3, §7.2 ──
-
+// [Phase 6 §3] eight causes added for the recovery table
+// (Docs/planning/phase_6_recovery_journal_reporting.md §3): NOT_SETTLED,
+// AUTH_REQUIRED, SITE_REFUSED, NAVIGATION_FAILED and MODEL_OUTPUT_INVALID
+// are newly DETECTED this phase; STUCK and TAB_CLOSED already had real
+// detection (lib/agent/budget.ts's noteOutcome, the Supervisor's tabClosed
+// flag) but are folded into this union so lib/agent/recovery.ts's
+// recover() can switch over the FULL taxonomy exhaustively, one arm per
+// row, rather than leaving some causes outside the type recovery.ts is
+// written against. BACKEND_DETACHED has no live producer yet — [Phase 9]
+// wires the CDP debugger's own detach event — but recovery.ts still
+// answers it so the table (and recovery.spec.ts) covers all thirteen §3
+// rows from this phase's first commit.
 export type FailureCause =
   | 'STOPPED'
   | 'TARGET_MISSING'
@@ -76,7 +87,22 @@ export type FailureCause =
   | 'OBSCURED'
   | 'NEVER_TIER_AT_ACTUATOR'
   | 'WRITE_REJECTED'
-  | 'PARTIAL_EFFECT';
+  | 'PARTIAL_EFFECT'
+  | 'NOT_SETTLED'
+  | 'AUTH_REQUIRED'
+  | 'SITE_REFUSED'
+  | 'NAVIGATION_FAILED'
+  | 'MODEL_OUTPUT_INVALID'
+  | 'STUCK'
+  | 'TAB_CLOSED'
+  | 'BACKEND_DETACHED';
+
+/** Mirrors lib/schemas/action.schema.ts's ask_user `reason` enum — declared
+ *  here too (not just inferred from the zod schema) so
+ *  lib/agent/recovery.ts's pure RecoveryAction type does not need to import
+ *  the schema module at all (architecture.md's layering: lib/policy/**
+ *  and lib/agent/recovery.ts stay decision code, not validation code). */
+export type AskReason = 'AMBIGUOUS_TARGET' | 'MISSING_CAPABILITY' | 'NEEDS_USER_DATA' | 'SITE_BLOCKED';
 
 /** Errors an ActuationBackend's attach/detach/perceive/capture can produce —
  *  distinct from FailureCause, which is what act() (a permitted, in-flight

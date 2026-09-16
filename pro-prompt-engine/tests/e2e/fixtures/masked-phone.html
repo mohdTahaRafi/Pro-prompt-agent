@@ -1,0 +1,31 @@
+<!doctype html>
+<!--
+  Phase 6 §3.3 — WRITE_REJECTED's adaptation, task 6.3.
+
+  A phone field with a real input-mask formatter: every keystroke's raw
+  digits are re-rendered space-grouped ("07700 900123") on the SAME 'input'
+  event the actuator's own type() reads back from, so the strict, exact-match
+  verify() in lib/page/verifier.ts fails on attempt 0 no matter how the value
+  is written — this is not a focus problem, it is a reformatting one, and
+  reproducing it required a REAL browser's input/event timing (this is why
+  this fixture lives here and not in a happy-dom unit test). Recovery's own
+  looselyEqual (recovery-only, never inside verify()) is what accepts
+  "07700 900123" against an intended "07700900123" on the second attempt —
+  see lib/agent/recovery.ts's WRITE_REJECTED case and the new 'accept' arm
+  it returns rather than a wasted third real write.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Masked phone field fixture</title></head>
+<body>
+  <h1>Contact details</h1>
+  <label for="phone">Phone number</label>
+  <input id="phone" type="text" inputmode="tel" autocomplete="off" />
+  <script>
+    document.getElementById('phone').addEventListener('input', (e) => {
+      const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+      const grouped = digits.length > 5 ? `${digits.slice(0, 5)} ${digits.slice(5)}` : digits;
+      if (e.target.value !== grouped) e.target.value = grouped;
+    });
+  </script>
+</body>
+</html>

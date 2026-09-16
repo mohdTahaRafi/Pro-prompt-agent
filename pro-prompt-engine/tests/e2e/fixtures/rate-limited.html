@@ -1,0 +1,17 @@
+<!doctype html>
+<!--
+  Phase 6 §3.5, task 6.5 — SITE_REFUSED's rate-limit signal, "a 429 fixture
+  ends the run terminally after exactly one request". A real 429 response
+  is a status code an e2e test cannot assert past PERCEIVE_STRUCTURE's own
+  DOM-only view (Chrome does not expose the response status to a content
+  script) — this fixture instead reproduces what a real 429 page actually
+  RENDERS, which is exactly what lib/agent/recovery.ts's detectSiteRefusal()
+  reads: the page title.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>429 Too Many Requests</title></head>
+<body>
+  <h1>Too Many Requests</h1>
+  <p>You have sent too many requests in a given amount of time. Please slow down.</p>
+</body>
+</html>

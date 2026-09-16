@@ -9,17 +9,30 @@
  * content-script-initiated navigation destroys the script that issued it
  * before it can report (§6.3 "Navigating"). The gate has already confirmed
  * the destination origin is in scope before this runs.
+ *
+ * [Phase 6 e2e investigation, 2026-09-13] "Lives in the service worker"
+ * above is now enforced, not just stated: lib/agent/tab-agent.ts (running in
+ * the offscreen document, which has no chrome.tabs — Chrome's own
+ * restriction, lib/actuation/relay-backend.ts's header) never imports this
+ * module's functions directly any more, only relay-backend.ts's
+ * message-relayed equivalent, which arrives here (entrypoints/background.ts's
+ * AGENT_ACTUATION_* handlers) and calls these exact functions. So every
+ * chrome.tabs.* / chrome.storage.session.* call below always executes
+ * somewhere both are actually attached — storageArea() is used regardless,
+ * for the same one-seam reason every other offscreen-reachable module uses
+ * it (lib/platform/storage.ts's header).
  */
 import { Ok, Err, type Result } from '@lib/utils/result';
 import { PerceiveStructureResponseSchema } from '@lib/schemas/snapshot.schema';
+import { storageArea } from '@lib/platform/storage';
 import type { Action } from '@lib/schemas/action.schema';
 import type { PerceptionSnapshot } from '@lib/schemas/snapshot.schema';
 import type { BackendError, FailureCause } from '@lib/types/agent.types';
-import type { ActuationBackend, ActEffect, PerceiveArgs } from '@lib/actuation/backend';
+import type { ActuationBackend, ActEffect, DismissResult, PerceiveArgs } from '@lib/actuation/backend';
 
 async function isStopped(runId: number): Promise<boolean> {
   const stopKey = `stop:${runId}`;
-  const { [stopKey]: stopped } = await chrome.storage.session.get(stopKey);
+  const { [stopKey]: stopped } = await storageArea('session').get(stopKey);
   return Boolean(stopped);
 }
 
@@ -118,6 +131,15 @@ export const domBackend: ActuationBackend = {
     }).catch(() => null);
     if (!res) return Err('TARGET_MISSING');   // no content script = no page we can reach
     return res.ok ? Ok(res.value as ActEffect) : Err(res.error as FailureCause);
+  },
+
+  async dismissOverlay(tabId, runId, handle, epoch) {
+    const res = await chrome.tabs.sendMessage(tabId, {
+      type: 'DISMISS_OVERLAY', runId, handle, epoch,
+    }).catch(() => null);
+    if (!res) return Err('TARGET_MISSING' satisfies FailureCause);
+    if (!res.ok) return Err(res.error as FailureCause);
+    return Ok(res.value as DismissResult);
   },
 
   async capture() {

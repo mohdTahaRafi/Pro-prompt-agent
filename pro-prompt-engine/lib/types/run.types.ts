@@ -50,6 +50,13 @@ export interface RunRecord {
   startedAt: number;
   endedAt?: number;
   profileId?: number;                  // (Phase 8) fact attribution
+  // [Phase 6 §5] lib/policy/suspicion.ts's credential_request signal needs
+  // to know whether THIS run began somewhere that already showed a
+  // password-classified field, so a run that legitimately starts on a
+  // login page is not halted the instant it reads it — only a credential
+  // request appearing AFTER that first snapshot is suspicious. Set once,
+  // from the run's first perceive(), never updated again.
+  firstSnapshotExcludedCount?: number;
 }
 
 // [Phase 3 §8] The complete journal vocabulary this phase writes. Later
@@ -95,7 +102,20 @@ export type RunEventKind =
   | 'run.interrupted'
   | 'run.stopped'
   | 'ask_user.asked'
-  | 'ask_user.answered';
+  | 'ask_user.answered'
+  // [Phase 6 §3, §4, §5] recovery, anomaly and suspicion — the journal
+  // kinds lib/agent/reporter.ts's buildReport() reads to produce
+  // per-step `recoveredBy` text, `Gap`s and the suspicion halt card.
+  | 'recovery.attempted'      // a RecoveryAction other than 'ask'/'end'/'pause' was taken
+  | 'recovery.recovered'      // the retried/adapted action went on to verify — {method}
+  | 'recovery.exhausted'      // the 3-attempt envelope (or a cause's own earlier limit) was hit
+  | 'recovery.approval_requested'   // PARTIAL_EFFECT (§3.6) — distinct from tier approval.requested
+  | 'recovery.approval_granted'
+  | 'recovery.approval_denied'
+  | 'auth.required'           // AUTH_REQUIRED (§3.4) — the pause-and-offer-takeover copy
+  | 'site.refused'            // SITE_REFUSED (§3.5) — {kind, evidence}
+  | 'anomaly.detected'        // one of the three §4 detectors fired — {detector, detail}
+  | 'suspicion.halted';       // lib/policy/suspicion.ts's scan() found a hit — {hits}
 
 export interface RunEvent {
   id?: number;

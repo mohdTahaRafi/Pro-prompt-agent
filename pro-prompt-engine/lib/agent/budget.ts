@@ -14,6 +14,7 @@
  * it from the elapsed-time check.
  */
 import { Ok, Err, type Result } from '@lib/utils/result';
+import { storageArea } from '@lib/platform/storage';
 import type { RunBudgets } from '@lib/types/run.types';
 import type { Verified } from '@lib/types/agent.types';
 
@@ -35,7 +36,7 @@ const key = (runId: number) => `budget:${runId}`;
  *  never against a live Budget instance (the gate runs in a different
  *  process — Phase 3 §3.7.1). */
 export async function readMirror(runId: number): Promise<BudgetSnapshot | null> {
-  const store = (await chrome.storage.session.get(key(runId)))[key(runId)] as BudgetSnapshot | undefined;
+  const store = (await storageArea('session').get(key(runId)))[key(runId)] as BudgetSnapshot | undefined;
   return store ?? null;
 }
 
@@ -75,7 +76,7 @@ export class Budget {
       startedAt: this.startedAt, pausedMs: this.pausedMs + (this.pauseStartedAt !== null ? Date.now() - this.pauseStartedAt : 0),
       limits: this.limits,
     };
-    await chrome.storage.session.set({ [key(this.runId)]: snap });
+    await storageArea('session').set({ [key(this.runId)]: snap });
   }
 
   /** Every draw is against ONE pool. Three tabs at 40 each would be 120

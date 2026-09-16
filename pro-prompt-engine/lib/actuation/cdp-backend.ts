@@ -17,5 +17,6 @@ export const cdpBackend: ActuationBackend = {
   detach: notImplemented,
   perceive: notImplemented,
   act: notImplemented,
+  dismissOverlay: notImplemented,
   capture: notImplemented,
 };

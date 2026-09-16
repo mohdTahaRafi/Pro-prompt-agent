@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  Phase 6 §3.3 — WRITE_REJECTED that never resolves, task 6.3: "three
+  attempts produce `ask` with both the intended and observed values quoted".
+  This field discards every written value on its own 'input' event, real
+  isTrusted-checking-site behaviour lib/page/actuator.ts's own doType()
+  header names as the reason WRITE_REJECTED exists at all — the framework's
+  own state (here, just this handler) never accepts a programmatic write.
+-->
+<html lang="en">
+<head><meta charset="utf-8"><title>Rejecting input fixture</title></head>
+<body>
+  <h1>A field that refuses every write</h1>
+  <label for="stubborn">Reference code</label>
+  <input id="stubborn" type="text" value="" autocomplete="off" />
+  <script>
+    document.getElementById('stubborn').addEventListener('input', (e) => {
+      e.target.value = '';
+    });
+  </script>
+</body>
+</html>

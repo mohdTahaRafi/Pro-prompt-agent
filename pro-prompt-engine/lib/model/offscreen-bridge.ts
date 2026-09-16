@@ -60,10 +60,34 @@ export function __resetOffscreenBridgeState(): void {
   confirmedReady = false;
 }
 
-/** Polls with backoff until the offscreen document's message listener is
- *  actually live, or gives up. "Receiving end does not exist" during this
- *  window is the document's module graph still loading — expected, not a
- *  failure — so it is retried rather than propagated. */
+/**
+ * Polls with backoff until the offscreen document's message listener is
+ * actually live, or gives up. "Receiving end does not exist" during this
+ * window is the document's module graph still loading — expected, not a
+ * failure — so it is retried rather than propagated.
+ *
+ * [Phase 5 acceptance audit] REAL BUG, found against real Chrome:
+ * `getContexts()` reporting the document exists, or even
+ * `chrome.offscreen.createDocument()` resolving, does not mean this
+ * listener is registered yet — it is added near the end of
+ * entrypoints/offscreen/main.ts's module graph (dexie, zod, the WebLLM/
+ * Prompt API host code all load first). A message sent in that window
+ * fails "Receiving end does not exist", and `lib/agent/reconcile.ts`'s
+ * `askOffscreen()` used to swallow exactly that failure, letting a run sit
+ * in `state: 'planning'` forever with nothing to explain why. Fixed by not
+ * returning until a real HEARTBEAT_PING round trip actually succeeds.
+ *
+ * [Phase 6 e2e investigation, 2026-09-13, REMOVED] This function briefly
+ * also waited for a `storageReady` flag, on the theory that `chrome.storage`
+ * bound to the document slightly after `chrome.runtime` did. That was
+ * wrong: `chrome.storage` is PERMANENTLY absent from an offscreen document,
+ * not merely late (lib/platform/storage.ts's header has the real evidence).
+ * Waiting for a flag that can never become true would have turned every
+ * admission into a guaranteed 15s timeout. Storage access reachable from
+ * this document now goes through storageArea()/storageChanged, which relay
+ * to the service worker instead — this function only needs to know the
+ * document's message listener itself is up, which a plain response proves.
+ */
 async function pingUntilReady(timeoutMs = 15_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let delay = 20;

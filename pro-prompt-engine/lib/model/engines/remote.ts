@@ -16,6 +16,7 @@
  */
 import { Ok, Err, type Result } from '@lib/utils/result';
 import * as journal from '@lib/agent/journal';
+import { storageArea } from '@lib/platform/storage';
 import type { RouteRequest, RouteResponse, RouteError } from '@lib/model/router-types';
 import type { Engine } from '@lib/model/engine';
 
@@ -30,9 +31,9 @@ interface RemoteStorageShape {
 }
 
 async function getRemoteConfig(): Promise<RemoteConfig> {
-  const local = await chrome.storage.local.get<RemoteStorageShape>([
+  const local = await storageArea('local').get([
     'remoteApiKey', 'remoteBaseUrl', 'remoteModel', 'remoteLabel', 'groqApiKey', 'groqModel',
-  ]);
+  ]) as RemoteStorageShape;
   if (local.remoteApiKey) {
     return {
       apiKey: local.remoteApiKey,
@@ -49,7 +50,7 @@ async function getRemoteConfig(): Promise<RemoteConfig> {
       apiKey: local.groqApiKey, baseUrl: DEFAULT_REMOTE_BASE_URL,
       model: local.groqModel || DEFAULT_REMOTE_MODEL, label: DEFAULT_REMOTE_LABEL,
     };
-    await chrome.storage.local.set({
+    await storageArea('local').set({
       remoteApiKey: migrated.apiKey, remoteBaseUrl: migrated.baseUrl,
       remoteModel: migrated.model, remoteLabel: migrated.label,
     });
@@ -84,7 +85,7 @@ export async function setRemoteConfig(patch: Partial<Omit<RemoteConfig, 'apiKey'
   if (patch.baseUrl !== undefined) update.remoteBaseUrl = patch.baseUrl;
   if (patch.model !== undefined) update.remoteModel = patch.model;
   if (patch.label !== undefined) update.remoteLabel = patch.label;
-  await chrome.storage.local.set(update);
+  await storageArea('local').set(update);
   return true;
 }
 
